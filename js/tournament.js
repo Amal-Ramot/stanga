@@ -32,8 +32,7 @@ export async function initTournament(onPlay) {
   T.db = db; T.user = user;
   try { T.myId = user ? await user.id() : null; } catch { T.myId = null; }
   try { T.canWrite = user ? await user.can('data.write') : null; } catch { T.canWrite = null; }
-  $('btn-tour').hidden = false;
-  subscribe();
+  subscribe(); // הכפתור יופיע רק אחרי שהטבלה נטענה בהצלחה
 }
 
 function subscribe() {
@@ -41,6 +40,7 @@ function subscribe() {
   T.db.collection('league').orderBy('pts', 'desc').limit(500).onSnapshot((snap) => {
     clearTimeout(timer);
     T.ready = true;
+    $('btn-tour').hidden = false;
     const docs = snap.docs || [];
     T.rows = sortRows(docs.map((d) => {
       const x = d.data() || {};
