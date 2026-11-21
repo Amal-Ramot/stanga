@@ -50,6 +50,23 @@ function toggleCam() {
 }
 
 // ---------- אתחול ----------
+// מסך מלא (חייב לבוא מלחיצה של המשתמש)
+function isFull() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+function goFullscreen() {
+  if (isFull()) return;
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (!req) return; // אייפון: לא נתמך – אפשר "הוסף למסך הבית"
+  try {
+    const r = req.call(el, { navigationUI: 'hide' });
+    if (r && r.then) r.then(() => { try { if (isTouchDevice()) screen.orientation.lock('landscape').catch(() => {}); } catch {} }).catch(() => {});
+  } catch {}
+}
+function toggleFullscreen() {
+  if (isFull()) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); }
+  else goFullscreen();
+}
+
 // קצה עליון קרוע לכל "דף מחברת"
 function tearPages() {
   document.querySelectorAll('.panel.win, .load-box').forEach((el) => {
@@ -86,7 +103,7 @@ async function boot() {
   $('loading').classList.add('hidden');
   setupMenu();
   R.renderer.setAnimationLoop(loop);
-  initTournament((level) => startMatch({ tournament: level })).catch(() => {});
+  initTournament((level) => { goFullscreen(); startMatch({ tournament: level }); }).catch(() => {});
   initNet({ onStart: startNetMatch, onEvent: onNetEvent, onEnd: onNetEnd }).then((ok) => {
     if (!ok) return;
     // שחקן רשום מופיע בלובי של המחוברים
@@ -137,7 +154,8 @@ function setupMenu() {
   if (isTouchDevice()) {
     document.querySelector('[data-mode="2p"]').style.display = 'none';
   }
-  $('btn-start').addEventListener('click', () => startMatch());
+  $('btn-start').addEventListener('click', () => { goFullscreen(); startMatch(); });
+  $('btn-full').addEventListener('click', toggleFullscreen);
   $('btn-rules').addEventListener('click', () => $('rules').classList.remove('hidden'));
   $('rules-close').addEventListener('click', () => $('rules').classList.add('hidden'));
   $('btn-again').addEventListener('click', () => {
@@ -163,6 +181,7 @@ function setupMenu() {
   const go = () => {
     if (intro.classList.contains('hidden')) return;
     intro.classList.add('hidden');
+    goFullscreen();
     SFX.initAudio(); SFX.startAmbience();
     startCinematic();
   };
