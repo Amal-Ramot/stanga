@@ -248,7 +248,7 @@ function startMatch(opts) {
   if (isTouchDevice()) $('touch').classList.remove('hidden');
   G.scores = [0, 0];
   G.players[0].name = G.mode === 'ai' ? 'אתה (אבי)' : 'אבי';
-  G.players[1].name = G.mode === 'ai' ? 'יניב מקומה 3' : 'יניב';
+  G.players[1].name = G.mode === 'ai' ? 'יניב כאפות' : 'יניב';
   G.players[0].speedMul = 1; G.players[1].speedMul = 1;
   G.ai = G.mode === 'ai' ? new AI(G, G.players[1], G.difficulty) : null;
   $('name1').textContent = G.players[0].name;
@@ -577,7 +577,7 @@ function showOver(i) {
   say(w, 'win');
   $('over-title').textContent = `${w.name} ניצח!`;
   $('over-score').textContent = `${G.scores[0]} : ${G.scores[1]}`;
-  $('over-sub').textContent = G.net ? 'משחק טורניר אונליין – מי שמפסיד קונה ארטיק 🍦' : G.mode === 'ai' ? (i === 0 ? 'מלך השכונה! אמא קוראת לעלות לאכול 🍝' : 'יניב מקומה 3 לקח אותך... רוצה נקמה?') : 'מי שמפסיד קונה ארטיק לכולם 🍦';
+  $('over-sub').textContent = G.net ? 'משחק טורניר אונליין – מי שמפסיד קונה ארטיק 🍦' : G.mode === 'ai' ? (i === 0 ? 'מלך השכונה! אמא קוראת לעלות לאכול 🍝' : 'יניב כאפות לקח אותך... רוצה נקמה?') : 'מי שמפסיד קונה ארטיק לכולם 🍦';
   $('over').classList.remove('hidden');
   $('touch').classList.add('hidden');
   SFX.sfxCheer(true);
