@@ -191,7 +191,6 @@ const SLANG = {
   heel: ['עקב של זהב!', 'ראית את זה?!'],
   win: ['מלך השכונה!', 'יאללה, מי מביא ארטיק?'],
 };
-const SLANG_AUDIO = { goal: ['yalla', 'achla', 'kapara', 'walla', 'aywa'], post: ['walla', 'opa'], foulOn: ['achi'], nutmeg: ['aywa'], kickoff: ['yalla', 'sababa'], conceded: ['achi', 'habibi'], juggle: ['achla'] };
 const sayTimers = [null, null];
 const sayPos = [null, null];
 function say(p, kind, chance = 1) {
