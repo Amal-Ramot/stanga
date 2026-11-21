@@ -421,3 +421,12 @@ button { font-family: inherit; cursor: pointer; }
 }
 #intro .stk.nanach { left: auto; bottom: auto; width: auto; }
 @media (max-width: 760px) { #intro .stk.nanach { top: 21%; right: 4%; left: auto; transform: rotate(10deg) scale(.85); } #intro .ad2 { top: 2%; } #intro .stk.golan { top: 24%; left: 6%; } }
+/* לוגו גדול ובולט בדף הקרוע */
+#menu .panel.win .logo.small { transform: rotate(-7deg) scale(1.02); margin: 2px 0 18px; }
+#menu .panel.win .logo.small .l1 { font-size: clamp(80px, 16vw, 132px); }
+#menu .panel.win .logo.small .l2 { font-size: clamp(50px, 10vw, 84px); margin-top: -4px; }
+#menu .panel.win .logo.small span { -webkit-text-stroke: 9px #1d1b26 !important; filter: drop-shadow(5px 5px 0 #1d1b26) !important; }
+@media (max-width: 560px) {
+  #menu .panel.win .logo.small .l1 { font-size: 80px; }
+  #menu .panel.win .logo.small .l2 { font-size: 52px; }
+}
