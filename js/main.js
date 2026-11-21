@@ -1,4 +1,4 @@
-// סטנגה בשכונה – לוגיקת המשחק
+// סטנגה שכונות – לוגיקת המשחק
 import './backend.js';
 import * as THREE from 'three';
 import { FIELD, BALL, PLAYER, POINTS, POTHOLES } from './config.js';
@@ -50,7 +50,22 @@ function toggleCam() {
 }
 
 // ---------- אתחול ----------
+// קצה עליון קרוע לכל "דף מחברת"
+function tearPages() {
+  document.querySelectorAll('.panel.win, .load-box').forEach((el) => {
+    const pts = [];
+    const n = 46;
+    for (let i = 0; i <= n; i++) {
+      const x = (i / n) * 100;
+      const y = 2 + Math.random() * 9 + (i % 7 === 3 ? 5 : 0);
+      pts.push(`${x.toFixed(2)}% ${y.toFixed(1)}px`);
+    }
+    el.style.clipPath = `polygon(${pts.join(',')}, 100% 100%, 0% 100%)`;
+  });
+}
+
 async function boot() {
+  tearPages();
   initInput();
   quality = isTouchDevice() ? 'low' : (new URLSearchParams(location.search).get('q') || 'high');
   onProgress((p) => { $('load-bar').style.width = `${Math.round(p * 100)}%`; });
@@ -218,7 +233,7 @@ const SLANG = {
   juggle: ['אחלה הקפצות!', 'כמו בטלוויזיה!'],
   scissors: ['כמו ברזילאי!', 'אוה! מספרת!'],
   heel: ['עקב של זהב!', 'ראית את זה?!'],
-  win: ['מלך השכונה!', 'יאללה, מי מביא ארטיק?'],
+  win: ['מלך השכונה!', 'יאללה, מי קונה ארטיק?'],
 };
 const sayTimers = [null, null];
 const sayPos = [null, null];
@@ -350,7 +365,7 @@ function startCinematic() {
   });
   G.ball.mesh.visible = false;
   $('cine').classList.remove('hidden', 'out');
-  typeCaption("שכונה ג', קיץ 1997.\nאחרי בית הספר...", 0.6);
+  typeCaption("שכונה ד', באר שבע. קיץ 1997.\nאחרי בית הספר...", 0.6);
 }
 let capTimer = null;
 function typeCaption(text, delay = 0) {
@@ -427,9 +442,9 @@ function cineKids(dt, t) {
   once('c3', 7.4, () => typeCaption('אבי, בניין 12.'));
   once('s0', 8.8, () => sayText(G.players[0], 'יניב! רד כבר!', 'yalla'));
   once('c4', 9.6, () => typeCaption('יניב, בניין 14.'));
-  once('s1', 10.8, () => sayText(G.players[1], 'יאללה, מי שמפסיד מביא ארטיק!', 'achla'));
+  once('s1', 10.8, () => sayText(G.players[1], 'יאללה, מי שמפסיד קונה ארטיק!', 'achla'));
   once('s2', 12.4, () => sayText(G.players[0], 'סבבה, אחי!', 'sababa'));
-  once('c5', 13.2, () => typeCaption('סטנגה בשכונה.'));
+  once('c5', 13.2, () => typeCaption('סטנגה שכונות.'));
   once('end', CINE_LEN, endCinematic);
   return intents;
 }
@@ -521,7 +536,7 @@ function showOver(i) {
   say(w, 'win');
   $('over-title').textContent = `${w.name} ניצח!`;
   $('over-score').textContent = `${G.scores[0]} : ${G.scores[1]}`;
-  $('over-sub').textContent = G.net ? 'משחק טורניר אונליין – מי שמפסיד מביא ארטיק 🍦' : G.mode === 'ai' ? (i === 0 ? 'מלך השכונה! אמא קוראת לעלות לאכול 🍝' : 'יניב מקומה 3 לקח אותך... רוצה נקמה?') : 'מי שמפסיד מביא ארטיק לכולם 🍦';
+  $('over-sub').textContent = G.net ? 'משחק טורניר אונליין – מי שמפסיד קונה ארטיק 🍦' : G.mode === 'ai' ? (i === 0 ? 'מלך השכונה! אמא קוראת לעלות לאכול 🍝' : 'יניב מקומה 3 לקח אותך... רוצה נקמה?') : 'מי שמפסיד קונה ארטיק לכולם 🍦';
   $('over').classList.remove('hidden');
   $('touch').classList.add('hidden');
   SFX.sfxCheer(true);

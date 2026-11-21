@@ -252,3 +252,90 @@ button { font-family: inherit; cursor: pointer; }
 .inv-text { font: 900 20px 'Rubik', sans-serif; margin: 10px 0; }
 .inv-btns { display: flex; gap: 10px; }
 .inv-btns .big { margin-top: 6px; font-size: 22px; }
+
+/* =========================================================
+   תפריט: דף שנתלש ממחברת (במקום חלון Windows 95)
+   ========================================================= */
+:root { --paper: #fdfbf2; --rule: #b7cde6; --margin: #e59a9a; --pen: #1f3f9c; --pencil: #4a4a52; --marker: rgba(255, 226, 64, .8); }
+.panel.win {
+  position: relative;
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(to left, transparent 52px, var(--margin) 52px, var(--margin) 54px, transparent 54px),
+    repeating-linear-gradient(to bottom, transparent 0, transparent 31px, var(--rule) 31px, var(--rule) 32px);
+  background-position: 0 0, 0 26px;
+  box-shadow: none;
+  border: none;
+  padding: 34px 66px 26px 22px; /* שוליים אדומים מימין, כמו במחברת בעברית */
+  color: #2a2a33;
+  font-family: 'Rubik', sans-serif;
+  transform: rotate(-0.6deg);
+}
+/* הצל של הדף (על המסך שמחזיק אותו, כי הקצה הקרוע חותך צל רגיל) */
+.screen:has(> .panel.win) > .panel.win { filter: none; }
+.screen:has(> .panel.win) { filter: drop-shadow(0 10px 14px rgba(0, 0, 0, .35)) drop-shadow(0 2px 3px rgba(0, 0, 0, .25)); }
+/* סלוטייפ על הדף */
+.panel.win::before {
+  content: ''; position: absolute; top: 4px; left: 50%; width: 120px; height: 26px; margin-left: -60px;
+  background: rgba(236, 224, 186, .78); transform: rotate(-2.5deg);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .12);
+}
+/* ה"כותרת" הופכת לשורה בכתב יד בראש הדף */
+.panel.win .titlebar {
+  margin: 0 0 4px; padding: 0; background: none; color: var(--pencil); direction: rtl;
+  font: 700 22px 'Rubik', sans-serif; justify-content: space-between;
+}
+.panel.win .tb-btns i { display: none; }
+.panel.win .tb-btns i[id] { display: grid; width: auto; height: auto; padding: 0 4px; background: none; box-shadow: none; color: #c0392b; font: 700 30px 'Rubik', sans-serif; cursor: pointer; }
+.panel.win .row label, .panel.win .tour-form-row label { font: 700 26px 'Rubik', sans-serif; color: var(--pencil); }
+/* אפשרויות: כתב יד, הנבחרת מסומנת במרקר צהוב */
+.panel.win .seg button {
+  background: transparent; box-shadow: none; border: none; color: #2a2a33;
+  font: 700 19px 'Rubik', sans-serif; padding: 6px 6px;
+}
+.panel.win .seg button.on {
+  background: linear-gradient(176deg, transparent 18%, var(--marker) 22%, var(--marker) 82%, transparent 86%);
+  box-shadow: none; transform: rotate(-1deg);
+}
+.panel.win .seg button:hover:not(.on) { text-decoration: underline wavy rgba(31, 63, 156, .5); }
+/* כפתורים גדולים: מסגרת מצוירת בעט כחול */
+.panel.win .big {
+  background: transparent; color: var(--pen); -webkit-text-stroke: 0; box-shadow: none;
+  border: 2.5px solid var(--pen);
+  border-radius: 255px 18px 225px 16px / 16px 225px 18px 255px;
+  font: 700 40px/1 'Rubik', sans-serif; padding: 10px 12px;
+  transition: transform .12s;
+}
+.panel.win .big:hover { transform: rotate(-1deg) scale(1.02); background: rgba(31, 63, 156, .05); }
+.panel.win .big:active { transform: scale(.98); box-shadow: none; }
+.panel.win .big.tour { color: #9c2b1f; border-color: #9c2b1f; }
+.panel.win .link { color: var(--pencil); font: 700 24px 'Rubik', sans-serif; text-decoration: underline; text-decoration-style: wavy; }
+.panel.win .credit { font-size: 12px; color: #7a7a85; }
+.panel.win h3, #pause .panel h3, #over .panel h3 { font: 700 44px/1 'Rubik', sans-serif; color: var(--pen); }
+.panel.win .final { font-family: 'Rubik', sans-serif; font-size: 72px; color: #c0392b; }
+.panel.win .tour-h { font: 700 40px/1 'Rubik', sans-serif; color: var(--pen); }
+.panel.win .tour-status, .panel.win .over-tour { color: var(--pen); }
+/* טבלת הטורניר כמו טבלה שצוירה במחברת */
+.panel.win .tour-table-wrap { background: transparent; box-shadow: none; }
+.panel.win .tour-table th { background: transparent; color: var(--pen); font: 700 24px 'Rubik', sans-serif; border-bottom: 2px solid var(--pen); position: sticky; top: 0; background-color: var(--paper); }
+.panel.win .tour-table td { border-bottom: 1px dashed rgba(31, 63, 156, .25); }
+.panel.win .tour-table td:last-child { color: #c0392b; }
+.panel.win .tour-table tr.me td { background: var(--marker); }
+.panel.win .tour-form-row input { background: transparent; box-shadow: none; border: none; border-bottom: 2px solid var(--pen); font: 700 20px 'Rubik', sans-serif; color: var(--pen); border-radius: 0; }
+.panel.win .lobby-row { background: transparent; box-shadow: none; border-bottom: 1px dashed rgba(31, 63, 156, .3); }
+.panel.win .lobby-row button { background: transparent; box-shadow: none; border: 2px solid var(--pen); border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px; color: var(--pen); }
+.panel.win .lobby h4 { font: 700 26px 'Rubik', sans-serif; color: var(--pencil); }
+.panel.win .rules ul, .rules ul { line-height: 1.6; }
+.panel.win .logo.small { margin-bottom: 6px; }
+/* מסך טעינה: גם הוא דף מחברת */
+#loading { background: #2a2433; }
+.load-box { background-color: var(--paper); background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 31px, var(--rule) 31px, var(--rule) 32px); box-shadow: 0 10px 20px rgba(0,0,0,.4); padding: 24px 20px; transform: rotate(-1deg); }
+.load-title { margin: 0 0 14px; background: none; color: var(--pen); text-align: center; direction: rtl; font: 700 44px 'Rubik', sans-serif; padding: 0; }
+.load-track { background: transparent; box-shadow: none; border-bottom: 2px dashed var(--pencil); height: 16px; padding: 0; }
+#load-bar { background: var(--pen); height: 5px; margin-top: 6px; border-radius: 3px; }
+#load-msg { color: var(--pencil); font: 700 22px 'Rubik', sans-serif; opacity: 1; }
+@media (max-width: 560px) { .panel.win { padding: 30px 46px 20px 14px; background-image: linear-gradient(to left, transparent 36px, var(--margin) 36px, var(--margin) 38px, transparent 38px), repeating-linear-gradient(to bottom, transparent 0, transparent 31px, var(--rule) 31px, var(--rule) 32px); } .panel.win .big { font-size: 34px; } }
+@media (max-width: 560px) {
+  .panel.win .seg button { font-size: 15px; min-width: 0; flex: 1 1 28%; padding: 6px 2px; }
+  .panel.win .row label { width: 38px; font-size: 20px; }
+}
