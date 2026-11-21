@@ -194,3 +194,13 @@ button { font-family: inherit; cursor: pointer; }
   .hud-btns button { width: 34px; height: 34px; font-size: 16px; }
   #turn { margin-top: 6px; }
 }
+
+/* כותרת בסגנון אותיות-בועה (Fredoka) – קרם וחרדל */
+.logo { font-family: 'Fredoka', 'Rubik', sans-serif; font-weight: 700; line-height: .95; transform: rotate(-3deg); }
+.logo span { paint-order: stroke fill; -webkit-text-stroke: 10px #1d1b26 !important; filter: drop-shadow(5px 5px 0 #1d1b26) !important; text-shadow: none !important; background: none !important; }
+.logo .l1 { color: #efe3c4 !important; font-size: clamp(64px, 14vw, 156px); transform: rotate(-2deg); }
+.logo .l2 { color: #d9a441 !important; font-size: clamp(40px, 8.5vw, 92px); transform: rotate(2deg) translateX(-8%); margin-top: 4px; }
+.logo.small span { -webkit-text-stroke: 6px #1d1b26 !important; filter: drop-shadow(3px 3px 0 #1d1b26) !important; }
+.logo.small .l1 { font-size: clamp(42px, 8vw, 64px); }
+.logo.small .l2 { font-size: clamp(28px, 5vw, 40px); }
+.burst { left: -90px; top: -30px; }
