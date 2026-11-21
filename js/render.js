@@ -1,9 +1,7 @@
 // רנדרר WebGPU (עם נפילה אוטומטית ל-WebGL2), תאורה, צללים ו-AO
 import * as THREE from 'three';
-import { pass, mrt, output, normalView, vec3, vec4, uv, smoothstep, float, saturation, renderOutput } from 'three/tsl';
+import { pass, mrt, output, normalView, vec4, uniform, uv, smoothstep, float } from 'three/tsl';
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
-import { bloom } from 'three/addons/tsl/display/BloomNode.js';
-import { fxaa } from 'three/addons/tsl/display/FXAANode.js';
 
 export async function createRenderer(container, A, quality) {
   const renderer = new THREE.WebGPURenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -13,44 +11,44 @@ export async function createRenderer(container, A, quality) {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.18;
+  renderer.toneMappingExposure = 0.95;
   container.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#c9d9e4');
-  scene.fog = new THREE.Fog('#e3d6c2', 40, 115); // אובך חמים של שעת בין ערביים
+  scene.fog = new THREE.Fog('#d6dfe2', 45, 120);
   if (A.hdri) {
     scene.environment = A.hdri;
-    scene.environmentIntensity = 0.75;
+    scene.environmentIntensity = 0.55;
     scene.background = A.hdri;
     scene.backgroundBlurriness = 0.15;
   }
 
-  // "שעת הזהב" – שמש נמוכה מהמערב, אור כתום וצללים ארוכים
-  const SUN_OFFSET = new THREE.Vector3(-24, 22, 15);
-  const sun = new THREE.DirectionalLight('#ffdcae', 3.6);
+  // שמש של אחר הצהריים – צללים ארוכים וחמים
+  const sun = new THREE.DirectionalLight('#fff0dc', 3.0);
+  const SUN_OFFSET = new THREE.Vector3(-22, 24, 16);
   sun.position.copy(SUN_OFFSET);
   sun.castShadow = true;
   const sm = quality === 'high' ? 4096 : 2048;
   sun.shadow.mapSize.set(sm, sm);
-  Object.assign(sun.shadow.camera, { left: -40, right: 40, top: 36, bottom: -36, near: 1, far: 120 });
+  Object.assign(sun.shadow.camera, { left: -38, right: 38, top: 34, bottom: -34, near: 1, far: 110 });
   sun.shadow.bias = -0.0004;
   sun.shadow.normalBias = 0.03;
   sun.shadow.radius = 3;
   scene.add(sun);
   scene.add(sun.target);
-  const hemi = new THREE.HemisphereLight('#c4d8ee', '#9a7a56', 0.75);
+  const hemi = new THREE.HemisphereLight('#cfe2f3', '#8a7558', 0.45);
   scene.add(hemi);
 
   const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.5, 400);
 
-  // פוסט-פרוססינג קולנועי: הצללה סביבתית (AO), זוהר (Bloom), תיקון צבע, וינייטה והחלקת קצוות (FXAA)
+  // פוסט-פרוססינג: AO + וינייטה
   let post = null;
   if (quality !== 'low') {
     try {
       post = new THREE.PostProcessing(renderer);
-      post.outputColorTransform = false;
-      const scenePass = pass(scene, camera);
+      // MSAA – קצוות חלקים בלי לטשטש את התמונה
+      const scenePass = pass(scene, camera, { samples: quality === 'high' ? 4 : 2 });
       scenePass.setMRT(mrt({ output, normal: normalView }));
       const color = scenePass.getTextureNode('output');
       const depth = scenePass.getTextureNode('depth');
@@ -59,19 +57,10 @@ export async function createRenderer(container, A, quality) {
       aoPass.resolutionScale = quality === 'high' ? 0.75 : 0.5;
       aoPass.radius.value = 0.6;
       aoPass.thickness.value = 1.2;
-      const lit = color.rgb.mul(aoPass.getTextureNode().r);
-      // זוהר עדין על אזורים מוארים (שמש על טיח לבן, דודי שמש)
-      const glow = bloom(vec4(lit, 1), 0.22, 0.45, 0.82);
-      // מיפוי טונים (ACES) + sRGB, ואחריו תיקון צבע בסגנון שקיעה
-      const toned = renderOutput(vec4(lit.add(glow.rgb), 1));
-      let c = toned.rgb;
-      const lum = c.dot(vec3(0.2126, 0.7152, 0.0722));
-      c = c.mul(vec3(0.97, 0.99, 1.04).mix(vec3(1.04, 1.0, 0.93), smoothstep(0.15, 0.75, lum)));
-      c = saturation(c, 1.1);
+      const aoTex = aoPass.getTextureNode();
       const d = uv().sub(0.5).length();
-      c = c.mul(float(1).sub(smoothstep(0.45, 0.95, d).mul(0.3)));
-      const graded = vec4(c, 1);
-      post.outputNode = fxaa(graded);
+      const vig = float(1).sub(smoothstep(0.45, 0.95, d).mul(0.35));
+      post.outputNode = vec4(color.rgb.mul(aoTex.r).mul(vig), color.a);
     } catch (e) {
       console.warn('post disabled', e);
       post = null;
