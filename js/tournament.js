@@ -77,7 +77,7 @@ function render() {
     body.appendChild(tr);
   });
   const rk = myRank();
-  const reg = $('tour-reg'), play = $('tour-play');
+  const reg = $('tour-reg'), play = { hidden: true };
   if (T.canWrite === false || !T.myId) {
     reg.hidden = true; play.hidden = true;
     renderStatus(T.myId ? 'אפשר לצפות בטבלה. כדי להירשם צריך הרשאת "Contributor" לקישור.' : 'צריך להתחבר ל-Claude כדי להירשם לטורניר.');
@@ -86,7 +86,7 @@ function render() {
     renderStatus(`${T.rows.length} שחקנים בטבלה. הירשמו כדי להצטרף.`);
   } else {
     reg.hidden = true; play.hidden = false;
-    renderStatus(`${T.me.nick}, אתה במקום ${rk.rank} מתוך ${rk.of} · ${T.me.pts} נקודות`);
+    renderStatus(`${T.me.nick}, אתה במקום ${rk.rank} מתוך ${rk.of} · ${T.me.pts} נקודות. בחרו יריב מהמחוברים למטה.`);
   }
 }
 
@@ -132,11 +132,7 @@ function setupUI() {
     document.querySelectorAll('[data-tlevel]').forEach((x) => x.classList.remove('on'));
     b.classList.add('on'); T.level = b.dataset.tlevel;
   }));
-  $('tour-start').addEventListener('click', () => {
-    T.active = true;
-    $('tour').classList.add('hidden');
-    if (T.onPlay) T.onPlay(T.level);
-  });
+
 }
 
 export { LEVEL_NAME };

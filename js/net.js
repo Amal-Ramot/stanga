@@ -60,7 +60,7 @@ function renderLobby() {
   $('lobby').hidden = !NET.room || !NET.profile;
   if (!list.length) {
     const d = document.createElement('div'); d.className = 'lobby-empty';
-    d.textContent = 'אין שחקן פנוי כרגע. אפשר לשחק נגד יניב (המחשב) ולצבור נקודות, ובינתיים לשלוח את הקישור לחברים.';
+    d.textContent = 'אין כרגע שחקן רשום שמחובר. שלחו את הקישור לחברים מהשכונה, וכשהם יתחברו הם יופיעו כאן.';
     box.appendChild(d); return;
   }
   for (const p of list) {
