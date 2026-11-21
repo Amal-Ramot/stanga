@@ -117,7 +117,6 @@ async function boot() {
   for (const kid of [...G.players, ...G.extras]) kid.root.visible = true;
   G.ball.mesh.visible = true;
   R.camera.position.set(38, 30, 34); R.camera.lookAt(0, 0, -6); R.camera.updateMatrixWorld();
-  try { if (R.renderer.compileAsync) await R.renderer.compileAsync(R.scene, R.camera); } catch {}
   for (const view of [[38, 30, 34, 0, 0, -6], [-4.5, 4.4, -7.4, -7.9, 1.5, -14], [0, 22, 20, 0, 0, 0]]) {
     R.camera.position.set(view[0], view[1], view[2]); R.camera.lookAt(view[3], view[4], view[5]); R.camera.updateMatrixWorld();
     try { R.render(); } catch {}
