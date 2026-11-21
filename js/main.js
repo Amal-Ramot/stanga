@@ -42,10 +42,10 @@ const G = {
 
 let R, W, A;
 let quality = 'high';
-try { G.camMode = localStorage.getItem('stanga-cam') || 'low'; } catch { G.camMode = 'low'; }
+try { G.camMode = localStorage.getItem('stanga-cam2') || 'high'; } catch { G.camMode = 'high'; }
 function toggleCam() {
   G.camMode = G.camMode === 'high' ? 'low' : 'high';
-  try { localStorage.setItem('stanga-cam', G.camMode); } catch {}
+  try { localStorage.setItem('stanga-cam2', G.camMode); } catch {}
   const b = document.getElementById('btn-cam'); if (b) b.title = G.camMode === 'high' ? 'מבט נמוך' : 'מבט מלמעלה';
 }
 
