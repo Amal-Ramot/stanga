@@ -69,6 +69,18 @@ function toggleFullscreen() {
 
 // קצה עליון קרוע לכל "דף מחברת"
 function tearPages() {
+  document.querySelectorAll('#intro .torn').forEach((el) => {
+    // מודעות: קרועות קצת מכל הצדדים, ולפעמים פינה שלמה חסרה
+    const j = () => (Math.random() * 6).toFixed(1);
+    const pts = [];
+    const n = 12;
+    for (let i = 0; i <= n; i++) pts.push(`${(i / n * 100).toFixed(1)}% ${j()}px`);
+    for (let i = 1; i <= n; i++) pts.push(`calc(100% - ${j()}px) ${(i / n * 100).toFixed(1)}%`);
+    for (let i = n - 1; i >= 0; i--) pts.push(`${(i / n * 100).toFixed(1)}% calc(100% - ${j()}px)`);
+    for (let i = n - 1; i >= 1; i--) pts.push(`${j()}px ${(i / n * 100).toFixed(1)}%`);
+    if (Math.random() < 0.5 && !el.classList.contains('main')) { pts.splice(0, 2, '0% 18%', '12% 0%'); }
+    el.style.clipPath = `polygon(${pts.join(',')})`;
+  });
   document.querySelectorAll('.panel.win, .load-box').forEach((el) => {
     const pts = [];
     const n = 46;
@@ -1011,6 +1023,8 @@ function loop() {
   let dt = Math.min(0.05, (now - last) / 1000);
   last = now;
   if (G.paused) { R.render(); endFrame(); return; }
+  // מסך הפתיחה (לוח המודעות) מכסה הכול – לא צריך לרנדר את השכונה מאחוריו
+  if (!document.getElementById('intro').classList.contains('hidden')) { endFrame(); return; }
   if (G.slowmo > 0) { G.slowmo -= dt; G.timeScale = 0.35; } else G.timeScale += (1 - G.timeScale) * 0.15;
   dt *= G.timeScale;
   G.time += dt;
