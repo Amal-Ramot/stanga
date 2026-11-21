@@ -461,3 +461,37 @@ button { font-family: inherit; cursor: pointer; }
   #intro .nb-post { height: 13%; width: 16px; } #intro .nb-post.l { left: 18%; } #intro .nb-post.r { right: 18%; }
   #intro .ad.main { width: 84vw; }
 }
+
+/* ===== סידור מחדש של לוח המודעות – בלי חפיפות ===== */
+#intro .ad { padding-top: 24px; }
+#intro .tape { top: 0; height: 18px; }
+/* עמודה שמאלית */
+#intro .ad2 { top: 4%; left: 2.5%; right: auto; bottom: auto; width: 20%; }
+#intro .ad6 { top: 41%; left: 3.5%; right: auto; bottom: auto; width: 17%; }
+#intro .ad4 { bottom: 4%; left: 2.5%; right: auto; top: auto; width: 20%; }
+/* עמודה ימנית */
+#intro .ad1 { top: 4%; right: 2.5%; left: auto; bottom: auto; width: 20%; }
+#intro .ad5 { top: 43%; right: 3.5%; left: auto; bottom: auto; width: 16%; }
+#intro .ad3 { bottom: 4%; right: 2.5%; left: auto; top: auto; width: 18%; }
+/* המודעה הראשית במרכז, מעל כולם */
+#intro .ad.main { width: min(470px, 40%); max-height: 80%; z-index: 5; }
+/* שאריות נייר ישנות – רק בפינות פנויות */
+#intro .scrap { display: none; }
+/* סטיקרים – רק ברווחים בין העמודות לבין המודעה הראשית */
+#intro .stk { z-index: 3; }
+#intro .stk.maccabi { top: 26%; left: 23.5%; right: auto; bottom: auto; }
+#intro .stk.nanach { top: 24%; right: 23.3%; left: auto; bottom: auto; }
+#intro .stk.mashiach { bottom: 24%; right: 23.5%; left: auto; top: auto; font-size: 17px; }
+#intro .stk.golan { top: 1.8%; left: 31%; right: auto; bottom: auto; }
+#intro .stk.shalom { bottom: 1.8%; left: 46%; right: auto; top: auto; }
+#intro .scribble { top: 2.5%; right: 31%; left: auto; bottom: auto; font-size: 17px; z-index: 2; }
+
+@media (max-width: 760px) {
+  #intro .ad.main { width: 88%; max-height: none; top: 52%; }
+  #intro .ad2 { top: 2%; left: 3%; width: 46%; }
+  #intro .ad4 { bottom: 2%; left: 3%; width: 46%; }
+  #intro .ad3 { bottom: 2%; right: 3%; width: 44%; }
+  #intro .stk.nanach { top: 2.5%; right: 6%; transform: rotate(8deg) scale(.85); }
+  #intro .stk.golan { top: 15.5%; right: 4%; left: auto; font-size: 13px; }
+  #intro .stk.mashiach, #intro .stk.shalom, #intro .stk.maccabi, #intro .scribble { display: none; }
+}
