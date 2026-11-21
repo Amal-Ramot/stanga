@@ -111,7 +111,7 @@ export function startAmbience() {
   // מוזיקה – "רדיו מהמרפסת": מסונן ורחוק
   const radioLP = ctx.createBiquadFilter(); radioLP.type = 'lowpass'; radioLP.frequency.value = 2600;
   const radioHP = ctx.createBiquadFilter(); radioHP.type = 'highpass'; radioHP.frequency.value = 180;
-  amb.music.gain.value = 0.22;
+  amb.music.gain.value = 0.16;
   amb.music.connect(radioHP).connect(radioLP).connect(master);
   // רעש רקע עירוני
   const hum = ctx.createBufferSource(); hum.buffer = noiseBuffer(4); hum.loop = true;
@@ -128,7 +128,7 @@ export function startAmbience() {
   loop(() => { if (Math.random() < 0.6) honk(); }, 20, 45);
   startMusic();
 }
-export function setMusic(on) { if (amb) amb.music.gain.value = on ? 0.22 : 0; }
+export function setMusic(on) { if (amb) amb.music.gain.value = on ? 0.16 : 0; }
 
 function pan(node, p) {
   if (!ctx.createStereoPanner) return node;
@@ -204,18 +204,18 @@ const P1 = [[4, 2, 'g'], [5, 2], [4, 2], [3, 2, 's'], [4, 4, 't'], [2, 2], [3, 2
 const P2 = [[7, 2, 'g'], [6, 1], [7, 1], [6, 2], [5, 2, 's'], [4, 2], [5, 2], [4, 2], [3, 2], [2, 4, 't'], [3, 2], [2, 2], [1, 2, 's'], [0, 6]];
 const P3 = [[7, 4, 'g'], [8, 2, 's'], [7, 2], [6, 2], [7, 2], [8, 2], [9, 2, 's'], [10, 6, 't'], [9, 2], [8, 2], [7, 6, 'g']];
 const P4 = [[6, 2], [7, 2], [6, 2], [5, 2, 's'], [4, 4, 't'], [5, 2], [4, 2], [3, 2], [2, 2, 's'], [1, 2], [2, 2], [0, 8, 't']];
-const SONG = [P1, P2, P1, P2, P3, P4, P3, P4];
+const SONG = [P1, P2, null, P3, P4, null, P1, P2, null, P3, P4, null]; // null = הפסקת נשימה
 const CH = {
   D: { bass: 'D3', notes: [62, 66, 69] }, Cm: { bass: 'C3', notes: [60, 63, 67] },
   Gm: { bass: 'G2', notes: [62, 67, 70] }, Eb: { bass: 'Eb3', notes: [63, 67, 70] }, Bb: { bass: 'Bb2', notes: [62, 65, 70] },
 };
 const HARM = { P1: ['D', 'D', 'Gm', 'D'], P2: ['Cm', 'Bb', 'D', 'D'], P3: ['D', 'Cm', 'D', 'D'], P4: ['Cm', 'D', 'Gm', 'D'] };
-const HKEY = new Map([[P1, 'P1'], [P2, 'P2'], [P3, 'P3'], [P4, 'P4']]);
+const HKEY = new Map([[P1, 'P1'], [P2, 'P2'], [P3, 'P3'], [P4, 'P4'], [null, 'P1']]);
 // דרבוקה מהירה בתיבה (16): D=דום T=טק k=קה
-const RHY = ['D', '', 'k', 'T', '', 'k', 'D', '', 'D', '', 'k', 'T', '', 'k', 'T', 'k'];
+const RHY = ['D', '', '', 'k', '', '', 'T', '', 'D', '', '', 'k', '', '', 'T', ''];
 
 function startMusic(ahead = 0.5) {
-  const bpm = 126, s16 = 60 / bpm / 4;
+  const bpm = 92, s16 = 60 / bpm / 4;
   let step = 0;
   let next = ctx.currentTime + 0.25;
   const PH = 32, LOOP = SONG.length * PH;
@@ -227,19 +227,15 @@ function startMusic(ahead = 0.5) {
       const songStep = step - INTRO;
       // כלי הקשה
       const hit = RHY[bar16];
-      const fill = (step % 64) >= 60;
-      if (hit) darbuka(t, fill && hit === 'k' ? 'T' : hit, fill);
-      if (fill) darbuka(t + s16 / 2, 'k', false);
-      riq(t, bar16 % 2 === 0 ? 0.03 : 0.014);
-      if (bar16 === 4 || bar16 === 12) clap(t);
+      if (hit) darbuka(t, hit, false);
+      if (bar16 % 4 === 2) riq(t, 0.007);
       // הרמוניה
       const phrase = SONG[Math.floor(Math.max(0, songStep) / PH) % SONG.length];
       const chord = CH[HARM[HKEY.get(phrase)][Math.floor(((Math.max(0, songStep)) % PH) / 8)]];
-      if (bar16 === 0 || bar16 === 8) pluck(t, HZ(N[chord.bass]), s16 * 1.8, 0.13, 'bass');
-      if (bar16 === 6 || bar16 === 14) pluck(t, HZ(N[chord.bass] + 7), s16 * 1.4, 0.09, 'bass');
-      if (bar16 % 4 === 2) for (const n of chord.notes) organ(t, HZ(n), s16 * 1.3, 0.017);
+      if (bar16 === 0 || bar16 === 8) pluck(t, HZ(N[chord.bass]), s16 * 3, 0.08, 'bass');
+      if (bar16 === 0 || bar16 === 8) for (const n of chord.notes) organ(t, HZ(n), s16 * 7.5, 0.009);
       // סולו – מתחיל בכל תחילת משפט
-      if (songStep >= 0 && songStep % PH === 0) leadPhrase(t, phrase, s16);
+      if (songStep >= 0 && songStep % PH === 0 && phrase) leadPhrase(t, phrase, s16);
       step++;
       next += s16;
     }
@@ -251,26 +247,26 @@ function startMusic(ahead = 0.5) {
 // קול סולו רציף אחד למשפט – כך שהתווים גולשים זה לזה כמו זמר/קלידן מזרחי
 function leadPhrase(t0, phrase, s16) {
   const total = phrase.reduce((a, n) => a + n[1], 0) * s16;
-  const o = ctx.createOscillator(); o.type = 'sawtooth';
-  const o2 = ctx.createOscillator(); o2.type = 'square';
-  const vib = ctx.createOscillator(); vib.frequency.value = 6.2;
+  const o = ctx.createOscillator(); o.type = 'triangle';
+  const o2 = ctx.createOscillator(); o2.type = 'sine';
+  const vib = ctx.createOscillator(); vib.frequency.value = 5.2;
   const vibG = ctx.createGain(); vibG.gain.value = 0;
   vib.connect(vibG); vibG.connect(o.frequency); vibG.connect(o2.frequency);
-  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3200; lp.Q.value = 2;
-  const g2 = ctx.createGain(); g2.gain.value = 0.35;
+  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1900; lp.Q.value = 0.7;
+  const g2 = ctx.createGain(); g2.gain.value = 0.3;
   const g = ctx.createGain(); g.gain.value = 0;
   o.connect(lp); o2.connect(g2).connect(lp); lp.connect(g).connect(amb.music);
   const F = o.frequency, F2 = o2.frequency;
   const setF = (f, at, tc = 0.012) => { F.setTargetAtTime(f, at, tc); F2.setTargetAtTime(f * 0.5, at, tc); };
-  const vol = 0.075;
+  const vol = 0.05;
   let t = t0;
   F.setValueAtTime(HZ(deg(phrase[0][0])), t0); F2.setValueAtTime(HZ(deg(phrase[0][0])) * 0.5, t0);
   for (const [d, len, orn] of phrase) {
     const dur = len * s16;
     const f = HZ(deg(d)), up = HZ(deg(d + 1)), down = HZ(deg(d - 1));
     // התקפה קלה לכל תו
-    g.gain.setTargetAtTime(vol * 0.55, t, 0.004);
-    g.gain.setTargetAtTime(vol, t + 0.012, 0.01);
+    g.gain.setTargetAtTime(vol * 0.75, t, 0.01);
+    g.gain.setTargetAtTime(vol, t + 0.03, 0.02);
     vibG.gain.setTargetAtTime(0, t, 0.01);
     if (orn === 'g') {
       // גלישה מלמטה אל התו
@@ -278,21 +274,20 @@ function leadPhrase(t0, phrase, s16) {
       setF(f, t + 0.01, 0.03);
     } else if (orn === 's') {
       // סלסול: תו → מעל → תו → מתחת → תו
-      const q = Math.min(dur / 5, 0.055);
+      const q = Math.min(dur / 5, 0.07);
       setF(f, t, 0.006); setF(up, t + q, 0.006); setF(f, t + 2 * q, 0.006); setF(down, t + 3 * q, 0.006); setF(f, t + 4 * q, 0.008);
     } else if (orn === 't') {
       // טריל מהיר עם התו שמעל, ואז החזקה עם ויברטו
       setF(f, t, 0.01);
       const end = t + dur * 0.45;
       let k = 0;
-      for (let tt = t + 0.04; tt < end; tt += 0.042, k++) setF(k % 2 ? f : up, tt, 0.005);
+      for (let tt = t + 0.06; tt < end; tt += 0.075, k++) setF(k % 2 ? f : up, tt, 0.012);
       setF(f, end, 0.01);
     } else {
       setF(f, t, 0.012);
     }
     // ויברטו מתגבר בתווים ארוכים
-    if (len >= 4) { vibG.gain.setTargetAtTime(f * 0.022, t + dur * 0.4, dur * 0.2); }
-    else if (len >= 2) { vibG.gain.setTargetAtTime(f * 0.008, t + dur * 0.5, 0.05); }
+    if (len >= 4) { vibG.gain.setTargetAtTime(f * 0.012, t + dur * 0.4, dur * 0.25); }
     t += dur;
   }
   g.gain.setTargetAtTime(0, t0 + total - 0.04, 0.03);
@@ -418,7 +413,7 @@ function darbuka(t, kind, accent) {
   if (kind === 'D') {
     const o = ctx.createOscillator(); const g = ctx.createGain();
     o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(62, t + 0.2);
-    g.gain.setValueAtTime(0.32, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+    g.gain.setValueAtTime(0.16, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
     o.connect(g).connect(amb.music); o.start(t); o.stop(t + 0.36);
     const n = ctx.createBufferSource(); n.buffer = noiseBuffer(0.03);
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900;
@@ -428,7 +423,7 @@ function darbuka(t, kind, accent) {
     const soft = kind === 'k';
     const n = ctx.createBufferSource(); n.buffer = noiseBuffer(0.06);
     const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = soft ? 2600 : 3600; bp.Q.value = 1.4;
-    const g = ctx.createGain(); const v = soft ? 0.07 : accent ? 0.2 : 0.15;
+    const g = ctx.createGain(); const v = soft ? 0.035 : 0.06;
     g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.001, t + (soft ? 0.04 : 0.06));
     n.connect(bp).connect(g).connect(amb.music); n.start(t);
     const o = ctx.createOscillator(); const og = ctx.createGain();

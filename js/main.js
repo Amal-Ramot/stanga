@@ -204,8 +204,6 @@ function say(p, kind, chance = 1) {
   sayPos[i] = p;
   clearTimeout(sayTimers[i]);
   sayTimers[i] = setTimeout(() => { el.classList.remove('show'); sayPos[i] = null; }, 1900);
-  const aw = SLANG_AUDIO[kind];
-  if (aw) SFX.shout(undefined, aw[Math.floor(Math.random() * aw.length)], 1, undefined, i === 0 ? 1.45 : 1.3);
 }
 function sayText(p, text, audioWord) {
   const i = G.players.indexOf(p);
@@ -214,7 +212,6 @@ function sayText(p, text, audioWord) {
   sayPos[i] = p;
   clearTimeout(sayTimers[i]);
   sayTimers[i] = setTimeout(() => { el.classList.remove('show'); sayPos[i] = null; }, 2200);
-  if (audioWord) SFX.shout(undefined, audioWord, 1, undefined, i === 0 ? 1.45 : 1.3);
 }
 function updateBubbles() {
   for (let i = 0; i < 2; i++) {
