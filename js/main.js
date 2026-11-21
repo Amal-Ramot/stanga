@@ -1034,7 +1034,16 @@ function loop() {
   last = now;
   if (G.paused) { R.render(); endFrame(); return; }
   // מסך הפתיחה (לוח המודעות) מכסה הכול – לא צריך לרנדר את השכונה מאחוריו
-  if (!document.getElementById('intro').classList.contains('hidden')) { endFrame(); return; }
+  if (!document.getElementById('intro').classList.contains('hidden')) {
+    // מבט בגובה עיניים מהמדרכה על השכונה, עם תנועה איטית
+    const t = performance.now() / 1000;
+    R.camera.position.set(-2 + Math.sin(t * 0.12) * 3, 1.8 + Math.sin(t * 0.2) * 0.15, 14.5);
+    R.camera.lookAt(Math.sin(t * 0.12) * 4, 5, -16);
+    R.camera.updateMatrixWorld();
+    R.sun.target.position.set(0, 0, -4); R.sun.position.copy(R.SUN_OFFSET).add(new THREE.Vector3(0, 0, -4));
+    animateWorld(W, t);
+    R.render(); endFrame(); return;
+  }
   if (G.slowmo > 0) { G.slowmo -= dt; G.timeScale = 0.35; } else G.timeScale += (1 - G.timeScale) * 0.15;
   dt *= G.timeScale;
   G.time += dt;
