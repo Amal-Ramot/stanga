@@ -339,3 +339,15 @@ button { font-family: inherit; cursor: pointer; }
   .panel.win .seg button { font-size: 15px; min-width: 0; flex: 1 1 28%; padding: 6px 2px; }
   .panel.win .row label { width: 38px; font-size: 20px; }
 }
+
+/* תפריט: בלי השורה העליונה הכפולה, לוגו גדול ונטוי */
+#menu .panel.win .titlebar { display: none; }
+#menu .panel.win .logo.small { transform: rotate(-7deg); margin: 6px 0 14px; }
+#menu .panel.win .logo.small .l1 { font-size: clamp(60px, 13vw, 96px); }
+#menu .panel.win .logo.small .l2 { font-size: clamp(38px, 8vw, 60px); }
+#menu .panel.win .logo.small span { -webkit-text-stroke: 7px #1d1b26 !important; filter: drop-shadow(4px 4px 0 #1d1b26) !important; }
+@media (max-width: 560px) {
+  .panel.win .seg button { font-size: 13px; white-space: nowrap; letter-spacing: -0.2px; }
+  #menu .panel.win .logo.small .l1 { font-size: 64px; }
+  #menu .panel.win .logo.small .l2 { font-size: 42px; }
+}
