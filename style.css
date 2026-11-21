@@ -495,3 +495,14 @@ button { font-family: inherit; cursor: pointer; }
   #intro .stk.golan { top: 15.5%; right: 4%; left: auto; font-size: 13px; }
   #intro .stk.mashiach, #intro .stk.shalom, #intro .stk.maccabi, #intro .scribble { display: none; }
 }
+
+/* המודעה הראשית תמיד נכנסת במלואה (כולל הכפתור), גם במסכים נמוכים */
+#intro .ad.main { max-height: none; padding: 22px 20px 18px; }
+#intro .main .logo .l1 { font-size: clamp(46px, min(14vw, 12.5vh), 120px); }
+#intro .main .logo .l2 { font-size: clamp(30px, min(9vw, 7.8vh), 74px); }
+#intro .main-info { font-size: clamp(14px, min(2.4vw, 2.6vh), 21px); }
+#intro .main-where { font-size: clamp(11px, 1.9vh, 14px); }
+#intro .press { margin-top: clamp(6px, 1.6vh, 14px); font-size: clamp(17px, min(3vw, 3.4vh), 26px); }
+#intro .main-top { font-size: clamp(13px, 2.4vh, 18px); margin-bottom: clamp(2px, 1vh, 8px); }
+#intro .main .logo { margin: clamp(0px, .8vh, 4px) 0 clamp(4px, 1.4vh, 10px); }
+@media (max-height: 640px) { #intro .main-where { display: none; } }
