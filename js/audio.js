@@ -18,10 +18,14 @@ export function setMuted(m) {
   if (master) master.gain.value = m ? 0 : 0.6;
 }
 
+const noiseCache = new Map();
 function noiseBuffer(dur) {
+  const key = Math.round(dur * 1000);
+  if (noiseCache.has(key) && noiseCache.get(key).sampleRate === ctx.sampleRate) return noiseCache.get(key);
   const b = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * dur), ctx.sampleRate);
   const d = b.getChannelData(0);
   for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  noiseCache.set(key, b);
   return b;
 }
 
@@ -185,62 +189,153 @@ function dogBark() {
   }
 }
 
-// מוזיקה מקורית בסגנון פופ-מזרחי של שנות ה-90 (סינתיסייזר + תופים)
-function startMusic() {
-  const bpm = 104, beat = 60 / bpm;
-  // סולם פריגי-דומיננטי (חיג'אז) על מי
-  const scale = [0, 1, 4, 5, 7, 8, 10, 12];
-  const root = 64; // E4
-  const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
-  const melody = [0, 1, 2, 1, 2, 3, 4, 3, 2, 1, 2, 4, 3, 2, 1, 0, 4, 5, 4, 3, 4, 5, 7, 5, 4, 3, 2, 3, 2, 1, 0, 0];
-  const bassLine = [0, 0, 5, 5, 3, 3, 0, 0];
+// מוזיקה מקורית בסגנון ים-תיכוני של שנות ה-90:
+// דרבוקה בקצב מקסום, בוזוקי בסולם חיג'אז עם טרמולו וקישוטים, קלידים ובס
+const HZ = (m) => 440 * Math.pow(2, (m - 69) / 12);
+// חיג'אז על רה: D Eb F# G A Bb C
+const N = { D3: 50, A2: 45, G2: 43, C3: 48, Bb2: 46, Eb3: 51,
+  D4: 62, Eb4: 63, Fs4: 66, G4: 67, A4: 69, Bb4: 70, C5: 72, D5: 74, Eb5: 75, Fs5: 78, G5: 79 };
+
+// מנגינה: [תו, אורך בשמיניות, טרמולו?] – 4 משפטים של 2 תיבות (16 שמיניות)
+const MEL = [
+  // A – פתיחה עולה
+  [['D4', 1], ['Eb4', 1], ['Fs4', 1], ['G4', 1], ['A4', 2], ['Bb4', 1], ['A4', 1], ['G4', 1], ['A4', 1], ['Bb4', 1], ['C5', 1], ['A4', 4, 1]],
+  // B – ירידה בחיג'אז
+  [['D5', 1], ['C5', 1], ['Bb4', 1], ['A4', 1], ['Bb4', 1], ['A4', 1], ['G4', 1], ['Fs4', 1], ['G4', 2], ['Fs4', 1], ['Eb4', 1], ['D4', 4, 1]],
+  // C – שיא
+  [['A4', 1], ['A4', 1], ['Bb4', 1], ['C5', 1], ['D5', 2], ['Eb5', 1], ['D5', 1], ['C5', 1], ['D5', 1], ['C5', 1], ['Bb4', 1], ['A4', 4, 1]],
+  // D – חזרה הביתה
+  [['Bb4', 1], ['A4', 1], ['G4', 1], ['A4', 1], ['Bb4', 2], ['A4', 1], ['G4', 1], ['Fs4', 1], ['G4', 1], ['Fs4', 1], ['Eb4', 1], ['D4', 4, 1]],
+];
+// אקורדים לכל חצי-תיבה (8 שמיניות): שורש בס + תווי אקורד
+const CH = {
+  D: { bass: 'D3', notes: [62, 66, 69] }, Cm: { bass: 'C3', notes: [60, 63, 67] },
+  Gm: { bass: 'G2', notes: [62, 67, 70] }, Eb: { bass: 'Eb3', notes: [63, 67, 70] },
+  A: { bass: 'A2', notes: [61, 64, 69] }, Bb: { bass: 'Bb2', notes: [62, 65, 70] },
+};
+const PROG = [['D', 'D', 'Cm', 'D'], ['Gm', 'Cm', 'Eb', 'D'], ['D', 'Cm', 'Bb', 'A'], ['Gm', 'Eb', 'Cm', 'D']];
+// מקסום בשש-עשריות: D=דום T=טק k=קה (רך)
+const MAQSUM = ['D', '', 'T', 'k', '', 'k', 'T', '', 'D', '', 'T', 'k', '', 'k', 'T', 'k'];
+
+function startMusic(ahead = 0.5) {
+  const bpm = 100, s16 = 60 / bpm / 4;
   let step = 0;
-  let next = ctx.currentTime + 0.2;
+  let next = ctx.currentTime + 0.25;
+  // לוח זמנים של המנגינה מראש: 4 משפטים × 32 שש-עשריות
+  const melEvents = [];
+  let pos = 0;
+  MEL.forEach((phrase) => {
+    let p = pos;
+    for (const [n, len8, trem] of phrase) { melEvents.push({ at: p, n: N[n], len: len8 * 2, trem: !!trem }); p += len8 * 2; }
+    pos += 32;
+  });
+  const LOOP = 128; // 4 משפטים
   const sched = () => {
-    while (next < ctx.currentTime + 0.6) {
-      const s = step % 32;
+    while (next < ctx.currentTime + ahead) {
       const t = next;
-      // תופים
-      if (s % 4 === 0 || s % 8 === 6) drum(t, 'kick');
-      if (s % 8 === 4) drum(t, 'snare');
-      if (s % 2 === 1) drum(t, 'hat');
-      if (s % 16 === 14) drum(t + beat / 4, 'snare');
-      // בס
-      if (s % 2 === 0) synth(t, mtof(root - 24 + scale[bassLine[(s >> 2) % 8]]), beat * 0.45, 'triangle', 0.09);
-      // מנגינה (כל צעד = שמינית)
-      const deg = melody[s];
-      if (s % 8 !== 7) synth(t, mtof(root + scale[deg % 8] + (deg >= 8 ? 12 : 0)), beat * 0.42, 'square', 0.035, true);
-      // אקורדים
-      if (s % 8 === 0) for (const d of [0, 2, 4]) synth(t, mtof(root - 12 + scale[(bassLine[(s >> 2) % 8] + d) % 8]), beat * 3.6, 'sawtooth', 0.012);
+      const s = step % LOOP;
+      const bar16 = s % 16;
+      const intro = step < 32; // בהתחלה רק דרבוקה וקלידים
+      // דרבוקה
+      const hit = MAQSUM[bar16];
+      if (hit) darbuka(t, hit, (step % 64) >= 60 && hit !== 'D');
+      if ((step % 64) >= 60) darbuka(t + s16 / 2, 'k', false); // מילוי בסוף משפט
+      // רק (טמבורין) עדין
+      if (step % 2 === 1) riq(t, 0.012);
+      // בס – דום-דום של מזרחית
+      const chord = CH[PROG[Math.floor(s / 32) % 4][Math.floor((s % 32) / 8)]];
+      if (bar16 === 0 || bar16 === 6 || bar16 === 8 || bar16 === 14) pluck(t, HZ(N[chord.bass]), s16 * 2.5, 0.12, 'bass');
+      // קלידים – אקורדים על ה"אוף"
+      if (bar16 % 4 === 2) for (const n of chord.notes) organ(t, HZ(n), s16 * 1.6, 0.016);
+      // בוזוקי
+      if (!intro || step >= 16) {
+        for (const e of melEvents) if (e.at === s && !intro) bouzouki(t, HZ(e.n), e.len * s16, e.trem, s16);
+      }
       step++;
-      next += beat / 2;
+      next += s16;
     }
-    amb.timers.push(setTimeout(sched, 150));
+    if (ahead <= 1) amb.timers.push(setTimeout(sched, 120));
   };
   sched();
 }
 
-function synth(t, f, len, type, vol, vibrato) {
-  const o = ctx.createOscillator(); o.type = type; o.frequency.value = f;
-  if (vibrato) {
-    const l = ctx.createOscillator(); const lg = ctx.createGain();
-    l.frequency.value = 5.5; lg.gain.value = f * 0.012; l.connect(lg).connect(o.frequency); l.start(t); l.stop(t + len + 0.05);
-  }
-  const g = ctx.createGain();
-  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + 0.015); g.gain.setValueAtTime(vol, t + len * 0.7); g.gain.linearRampToValueAtTime(0, t + len);
-  o.connect(g).connect(amb.music); o.start(t); o.stop(t + len + 0.02);
+// רינדור תצוגה מקדימה של המוזיקה (לבדיקה)
+export async function renderMusicPreview(seconds = 20) {
+  const off = new OfflineAudioContext(2, 44100 * seconds, 44100);
+  const saved = [ctx, master, amb];
+  ctx = off; master = off.destination;
+  amb = { music: off.createGain(), timers: [] };
+  amb.music.gain.value = 0.5; amb.music.connect(off.destination);
+  startMusic(seconds);
+  const buf = await off.startRendering();
+  [ctx, master, amb] = saved;
+  noiseCache.clear();
+  return buf;
 }
 
-function drum(t, kind) {
-  if (kind === 'kick') {
-    const o = ctx.createOscillator(); const g = ctx.createGain();
-    o.frequency.setValueAtTime(130, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.12);
-    g.gain.setValueAtTime(0.25, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
-    o.connect(g).connect(amb.music); o.start(t); o.stop(t + 0.2);
-  } else {
-    const n = ctx.createBufferSource(); n.buffer = noiseBuffer(kind === 'hat' ? 0.05 : 0.15);
-    const f = ctx.createBiquadFilter(); f.type = kind === 'hat' ? 'highpass' : 'bandpass'; f.frequency.value = kind === 'hat' ? 7000 : 1800;
-    const g = ctx.createGain(); g.gain.setValueAtTime(kind === 'hat' ? 0.04 : 0.14, t); g.gain.exponentialRampToValueAtTime(0.001, t + (kind === 'hat' ? 0.04 : 0.14));
-    n.connect(f).connect(g).connect(amb.music); n.start(t);
+// בוזוקי: מריטה בהירה + טרמולו בתווים ארוכים + קישוט (גרייס) מהטון שמעל
+function bouzouki(t, f, len, trem, s16) {
+  if (Math.random() < 0.35 && !trem) pluck(t, f * Math.pow(2, 1 / 12), 0.05, 0.05, 'bz'); // קישוט
+  const t0 = t + (Math.random() < 0.35 && !trem ? 0.045 : 0);
+  if (trem) {
+    const n = Math.max(2, Math.round(len / (s16 / 2)));
+    for (let i = 0; i < n; i++) pluck(t0 + i * (s16 / 2), f, s16 * 0.6, 0.07 * (1 - i / (n * 1.6)), 'bz');
+  } else pluck(t0, f, Math.min(len, 0.5), 0.085, 'bz');
+}
+
+function pluck(t, f, len, vol, kind) {
+  const o1 = ctx.createOscillator(), o2 = ctx.createOscillator();
+  o1.type = 'sawtooth'; o2.type = kind === 'bass' ? 'triangle' : 'square';
+  o1.frequency.value = f; o2.frequency.value = f * (kind === 'bass' ? 1 : 2.003);
+  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass';
+  const top = kind === 'bass' ? 700 : 5200;
+  lp.frequency.setValueAtTime(top, t); lp.frequency.exponentialRampToValueAtTime(kind === 'bass' ? 200 : 900, t + len);
+  lp.Q.value = kind === 'bass' ? 1 : 4;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + 0.004);
+  g.gain.exponentialRampToValueAtTime(0.0008, t + len + 0.08);
+  const g2 = ctx.createGain(); g2.gain.value = kind === 'bass' ? 0.6 : 0.25;
+  o1.connect(lp); o2.connect(g2).connect(lp); lp.connect(g).connect(amb.music);
+  o1.start(t); o2.start(t); o1.stop(t + len + 0.1); o2.stop(t + len + 0.1);
+}
+
+function organ(t, f, len, vol) {
+  for (const [mul, v] of [[1, 1], [2, 0.5], [3, 0.25]]) {
+    const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f * mul;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol * v, t + 0.01);
+    g.gain.setValueAtTime(vol * v, t + len * 0.6); g.gain.linearRampToValueAtTime(0, t + len);
+    o.connect(g).connect(amb.music); o.start(t); o.stop(t + len + 0.02);
   }
+}
+
+// דרבוקה: דום עמוק, טק חד, קה רך
+function darbuka(t, kind, accent) {
+  if (kind === 'D') {
+    const o = ctx.createOscillator(); const g = ctx.createGain();
+    o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(62, t + 0.2);
+    g.gain.setValueAtTime(0.32, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+    o.connect(g).connect(amb.music); o.start(t); o.stop(t + 0.36);
+    const n = ctx.createBufferSource(); n.buffer = noiseBuffer(0.03);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900;
+    const ng = ctx.createGain(); ng.gain.setValueAtTime(0.08, t); ng.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
+    n.connect(lp).connect(ng).connect(amb.music); n.start(t);
+  } else {
+    const soft = kind === 'k';
+    const n = ctx.createBufferSource(); n.buffer = noiseBuffer(0.06);
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = soft ? 2600 : 3600; bp.Q.value = 1.4;
+    const g = ctx.createGain(); const v = soft ? 0.07 : accent ? 0.2 : 0.15;
+    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.001, t + (soft ? 0.04 : 0.06));
+    n.connect(bp).connect(g).connect(amb.music); n.start(t);
+    const o = ctx.createOscillator(); const og = ctx.createGain();
+    o.frequency.value = soft ? 620 : 820; og.gain.setValueAtTime(v * 0.4, t); og.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
+    o.connect(og).connect(amb.music); o.start(t); o.stop(t + 0.04);
+  }
+}
+
+function riq(t, v) {
+  const n = ctx.createBufferSource(); n.buffer = noiseBuffer(0.05);
+  const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 8000;
+  const g = ctx.createGain(); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0005, t + 0.05);
+  n.connect(hp).connect(g).connect(amb.music); n.start(t);
 }
