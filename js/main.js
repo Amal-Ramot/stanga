@@ -42,7 +42,7 @@ const G = {
 
 let R, W, A;
 let quality = 'high';
-try { G.camMode = localStorage.getItem('stanga-cam2') || 'high'; } catch { G.camMode = 'high'; }
+G.camMode = 'high'; // רק המבט מלמעלה
 function toggleCam() {
   G.camMode = G.camMode === 'high' ? 'low' : 'high';
   try { localStorage.setItem('stanga-cam2', G.camMode); } catch {}
@@ -176,7 +176,6 @@ function setupMenu() {
   });
   $('btn-menu').addEventListener('click', () => { $('over').classList.add('hidden'); toMenu(); });
   $('btn-pause').addEventListener('click', togglePause);
-  $('btn-cam').addEventListener('click', toggleCam);
   $('btn-resume').addEventListener('click', togglePause);
   $('btn-quit').addEventListener('click', () => { $('pause').classList.add('hidden'); G.paused = false; toMenu(); });
   $('btn-sound').addEventListener('click', () => {
@@ -202,7 +201,6 @@ function setupMenu() {
   addEventListener('keydown', (e) => {
     if (!intro.classList.contains('hidden')) { go(); return; }
     if (G.state === 'cinematic') { endCinematic(); return; }
-    if (e.code === 'KeyC' && G.state !== 'cinematic') toggleCam();
     if ((e.code === 'Escape' || e.code === 'KeyP') && (G.state === 'play' || G.state === 'setpiece' || G.paused)) togglePause();
   });
 }
