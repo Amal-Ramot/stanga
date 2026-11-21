@@ -250,6 +250,7 @@ export class Player {
   }
 
   play(type) {
+    this.animSeq = (this.animSeq || 0) + 1; this.animType = type;
     const dur = { kick: 0.34, lob: 0.38, heel: 0.36, scissors: 0.8, head: 0.32, whiff: 0.32, cheer: 1.4, sad: 1.2 }[type] || 0.3;
     this.anim = { type, t: 0, dur };
   }
@@ -345,7 +346,7 @@ export class Player {
 // שני הילדים של המשחק
 export const KIDS = {
   p1: { name: 'אבי', shirt: '#a9cbe8', logo: '#1d3f78', school: 'בי"ס אחד העם', pants: '#3c5a86', denim: true, skin: '#e2b08a', hair: '#2a1a10', shoe: '#e9e9e4', marker: '#2f7de0', attackDir: 1 },
-  p2: { name: 'שמוליק', shirt: '#f3f1ea', logo: '#a3262c', school: 'בי"ס ביאליק', pants: '#5a5d63', denim: false, longPants: true, skin: '#c48e62', hair: '#140c07', shoe: '#2c2c2c', cap: '#c9302c', capBack: true, marker: '#e0442f', attackDir: -1 },
+  p2: { name: 'יניב', shirt: '#f3f1ea', logo: '#a3262c', school: 'בי"ס ביאליק', pants: '#5a5d63', denim: false, longPants: true, skin: '#c48e62', hair: '#140c07', shoe: '#2c2c2c', cap: '#c9302c', capBack: true, marker: '#e0442f', attackDir: -1 },
 };
 
 // ילדי השכונה שיורדים לראות את המשחק

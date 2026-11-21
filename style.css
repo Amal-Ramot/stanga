@@ -218,3 +218,37 @@ button { font-family: inherit; cursor: pointer; }
 #cine.out .bar { height: 0; }
 #cine-cap { position: absolute; right: 6vw; bottom: calc(11vh + 18px); color: #f3ece0; font: 700 clamp(18px, 2.6vw, 28px) 'Rubik', sans-serif; text-shadow: 2px 2px 0 #000, 0 0 12px rgba(0,0,0,.6); white-space: pre-line; min-height: 1.4em; }
 #cine-skip { position: absolute; left: 18px; bottom: 18px; pointer-events: auto; padding: 6px 14px; font: 700 15px 'Rubik', sans-serif; color: #f3ece0; background: rgba(0,0,0,.5); border: 2px solid #f3ece0; border-radius: 4px; }
+
+[hidden] { display: none !important; }
+/* טורניר */
+.big.tour { margin-top: 10px; }
+.tour-win { width: min(720px, 100%); }
+.tour-h { margin: 4px 0; font-family: 'Fredoka', 'Rubik', sans-serif; font-size: 26px; }
+.tour-status { margin: 4px 0 10px; font-weight: 700; color: #000080; }
+.tour-table-wrap { max-height: 40vh; overflow: auto; background: #fff; box-shadow: inset 2px 2px 0 #808080, inset -2px -2px 0 #dfdfdf; }
+.tour-table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.tour-table th { position: sticky; top: 0; background: #000080; color: #fff; padding: 5px 6px; font-weight: 700; }
+.tour-table td { padding: 5px 6px; border-bottom: 1px solid #e3e3e3; text-align: center; }
+.tour-table td:nth-child(2), .tour-table td:nth-child(3) { text-align: right; }
+.tour-table td:last-child { font-weight: 900; color: #000080; }
+.tour-table tr.me td { background: #fff3b0; font-weight: 900; }
+.tour-table td.empty { padding: 18px; color: #555; font-weight: 700; }
+.tour-form-row { display: flex; gap: 10px; align-items: center; margin-top: 10px; }
+.tour-form-row label { width: 54px; font-weight: 900; text-align: right; }
+.tour-form-row input { flex: 1; min-width: 0; padding: 7px 8px; font: 700 16px 'Rubik', sans-serif; border: none; box-shadow: inset 2px 2px 0 #000, inset -2px -2px 0 #fff; }
+.tour-note { margin: 10px 0 0; font-size: 12px; color: #333; }
+.over-tour { font-weight: 900; color: #000080; }
+#tour-close { cursor: pointer; }
+
+/* לובי ומשחק אונליין */
+.lobby { margin-top: 12px; text-align: right; }
+.lobby h4 { margin: 0 0 6px; font-family: 'Fredoka', 'Rubik', sans-serif; font-size: 18px; }
+.lobby-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 8px; background: #fff; box-shadow: inset 1px 1px 0 #808080; margin-bottom: 4px; font-weight: 700; }
+.lobby-row span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lobby-row button { flex: none; padding: 6px 12px; font: 700 14px 'Rubik', sans-serif; background: #c0c0c0; border: none; box-shadow: inset -2px -2px 0 #000, inset 2px 2px 0 #fff, inset -3px -3px 0 #808080; }
+.lobby-empty { padding: 8px; color: #444; font-weight: 700; }
+#invite, #waiting { z-index: 35; background: rgba(0, 0, 0, .35); }
+.small-win { width: min(420px, 100%); }
+.inv-text { font: 900 20px 'Rubik', sans-serif; margin: 10px 0; }
+.inv-btns { display: flex; gap: 10px; }
+.inv-btns .big { margin-top: 6px; font-size: 22px; }

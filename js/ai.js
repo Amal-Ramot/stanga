@@ -1,4 +1,4 @@
-// "שמוליק מקומה 3" – יריב ממוחשב
+// "יניב מקומה 3" – יריב ממוחשב
 import { FIELD, BALL, PLAYER } from './config.js';
 
 const DIFF = {

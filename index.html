@@ -26,6 +26,8 @@
     "./js/player.js": "./js/player.js?v=__V__",
     "./js/render.js": "./js/render.js?v=__V__",
     "./js/textures.js": "./js/textures.js?v=__V__",
+    "./js/tournament.js": "./js/tournament.js?v=__V__",
+    "./js/net.js": "./js/net.js?v=__V__",
     "./js/world.js": "./js/world.js?v=__V__"
   }
 }
@@ -83,7 +85,7 @@
     <div class="row">
       <label>מצב</label>
       <div class="seg">
-        <button data-mode="ai" class="on">נגד שמוליק מקומה 3</button>
+        <button data-mode="ai" class="on">נגד יניב מקומה 3</button>
         <button data-mode="2p">שניים על מקלדת אחת</button>
       </div>
     </div>
@@ -104,6 +106,7 @@
       </div>
     </div>
     <button id="btn-start" class="big">יאללה לשחק!</button>
+    <button id="btn-tour" class="big tour" hidden>🏆 טורניר השכונה</button>
     <button id="btn-rules" class="link">חוקים ושליטה</button>
     <div class="credit">מנוע: <span id="backend">…</span> · Three.js · טקסטורות Poly Haven (CC0)</div>
   </div>
@@ -131,10 +134,63 @@
     <h4>שליטה</h4>
     <div class="keys">
       <div><b>שחקן 1 (אבי):</b> WASD תנועה · רווח בעיטה (להחזיק = חזק יותר) · Shift שמאלי הרמה · E עקב · Q מספרת</div>
-      <div><b>שחקן 2 (שמוליק):</b> חיצים · Enter בעיטה · Shift ימני הרמה · / עקב · . מספרת</div>
+      <div><b>שחקן 2 (יניב):</b> חיצים · Enter בעיטה · Shift ימני הרמה · / עקב · . מספרת</div>
       <div><b>בטלפון:</b> ג'ויסטיק משמאל וכפתורים מימין. P / Esc להשהיה.</div>
     </div>
     <button id="rules-close" class="big">הבנתי</button>
+  </div>
+</div>
+
+<!-- טורניר השכונה -->
+<div id="tour" class="screen hidden">
+  <div class="panel win tour-win">
+    <div class="titlebar"><span>🏆 טורניר_השכונה.exe</span><span class="tb-btns"><i>_</i><i>□</i><i id="tour-close" role="button" tabindex="0">×</i></span></div>
+    <h3 class="tour-h">טבלת הטורניר השכונתי</h3>
+    <p id="tour-status" class="tour-status">טוען את הטבלה...</p>
+    <div class="tour-table-wrap">
+      <table class="tour-table">
+        <thead><tr><th>#</th><th>כינוי</th><th>שכונה</th><th>מש'</th><th>נצ-הפ</th><th>הפרש</th><th>נק'</th></tr></thead>
+        <tbody id="tour-rows"></tbody>
+      </table>
+    </div>
+    <form id="tour-reg" hidden>
+      <div class="tour-form-row">
+        <label for="tour-nick">כינוי</label><input id="tour-nick" maxlength="16" placeholder="למשל: אבי מהבלוק" autocomplete="off">
+      </div>
+      <div class="tour-form-row">
+        <label for="tour-hood">שכונה</label><input id="tour-hood" maxlength="20" placeholder="למשל: שכונה ג'" autocomplete="off">
+      </div>
+      <button id="tour-reg-btn" class="big" type="submit">הרשמה לטורניר</button>
+    </form>
+    <div id="tour-play" hidden>
+      <div class="row"><label>רמה</label><div class="seg">
+        <button data-tlevel="easy" type="button">קטן מכיתה ב' (3)</button>
+        <button data-tlevel="medium" type="button" class="on">רגיל (4)</button>
+        <button data-tlevel="hard" type="button">מלך השכונה (5)</button>
+      </div></div>
+      <button id="tour-start" class="big">משחק טורניר נגד יניב (עד 11)</button>
+    </div>
+    <div id="lobby" class="lobby" hidden>
+      <h4>מחוברים עכשיו – משחק אחד על אחד</h4>
+      <div id="lobby-list"></div>
+    </div>
+    <p class="tour-note">ניצחון = 3 נקודות + בונוס לפי רמה. שוויון בנקודות נשבר לפי הפרש שערים.</p>
+  </div>
+</div>
+
+<!-- הזמנה למשחק אונליין -->
+<div id="invite" class="screen hidden">
+  <div class="panel win small-win">
+    <div class="titlebar"><span>⚽ הזמנה_למשחק.exe</span><span class="tb-btns"><i>×</i></span></div>
+    <p id="inv-text" class="inv-text"></p>
+    <div class="inv-btns"><button id="inv-yes" class="big" type="button">אני בא!</button><button id="inv-no" class="big" type="button">לא עכשיו</button></div>
+  </div>
+</div>
+<div id="waiting" class="screen hidden">
+  <div class="panel win small-win">
+    <div class="titlebar"><span>⏳ ממתין...</span><span class="tb-btns"><i>×</i></span></div>
+    <p id="wait-text" class="inv-text"></p>
+    <button id="wait-cancel" class="link" type="button">ביטול</button>
   </div>
 </div>
 
@@ -143,7 +199,7 @@
   <div class="board">
     <div class="side p1"><span id="name1">אבי</span><b id="score1">0</b></div>
     <div class="mid"><span id="target-lbl">משחקים עד 21</span></div>
-    <div class="side p2"><b id="score2">0</b><span id="name2">שמוליק</span></div>
+    <div class="side p2"><b id="score2">0</b><span id="name2">יניב</span></div>
   </div>
   <div id="turn"></div>
   <div class="hud-btns">
@@ -169,6 +225,7 @@
     <h3 id="over-title"></h3>
     <div id="over-score" class="final"></div>
     <p id="over-sub"></p>
+    <p id="over-tour" class="over-tour" hidden></p>
     <button id="btn-again" class="big">עוד משחק!</button>
     <button id="btn-menu" class="link">לתפריט</button>
   </div>

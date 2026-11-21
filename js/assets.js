@@ -57,18 +57,26 @@ export async function loadAll() {
   }
   for (const n of MODELS) {
     jobs.push(new Promise((res) => {
-      gltfLoader.load(`assets/models/${n}/${n}.gltf`, (g) => {
+      gltfLoader.load(`assets/models/${n}/${n}.json`, (g) => {
         g.scene.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
         A.models[n] = g.scene; res();
       }, undefined, () => res());
     }));
   }
-  jobs.push(new Promise((res) => {
-    hdrLoader.load('assets/hdri/sky_1k.hdr', (t) => {
+  // שמיים (HDR מקודד ב-JSON כדי שכל שרת יגיש אותו)
+  jobs.push((async () => {
+    try {
+      const j = await (await fetch('assets/hdri/sky_1k.json')).json();
+      const bin = atob(j.b64); const buf = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+      const d = hdrLoader.parse(buf.buffer);
+      const t = new THREE.DataTexture(d.data, d.width, d.height);
+      t.type = d.type; t.colorSpace = THREE.LinearSRGBColorSpace; t.flipY = true;
+      t.minFilter = t.magFilter = THREE.LinearFilter; t.generateMipmaps = false; t.needsUpdate = true;
       t.mapping = THREE.EquirectangularReflectionMapping;
-      A.hdri = t; res();
-    }, undefined, () => res());
-  }));
+      A.hdri = t;
+    } catch (e) { console.warn('sky', e); }
+  })());
   await Promise.all(jobs);
   return A;
 }

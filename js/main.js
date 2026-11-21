@@ -8,6 +8,8 @@ import { AI } from './ai.js';
 import { initInput, readIntent, endFrame, isTouchDevice, consumeEdge } from './input.js';
 import { createRenderer } from './render.js';
 import * as SFX from './audio.js';
+import { initTournament, recordResult, T as TOUR, LEVEL_NAME } from './tournament.js';
+import { NET, initNet, setOpen, sendSnapshot, sendInput, sendEvent, endMatch } from './net.js';
 
 const $ = (id) => document.getElementById(id);
 const tmpV = new THREE.Vector3();
@@ -62,6 +64,12 @@ async function boot() {
   $('loading').classList.add('hidden');
   setupMenu();
   R.renderer.setAnimationLoop(loop);
+  initTournament((level) => startMatch({ tournament: level })).catch(() => {});
+  initNet({ onStart: startNetMatch, onEvent: onNetEvent, onEnd: onNetEnd }).then((ok) => {
+    if (!ok) return;
+    // שחקן רשום מופיע בלובי של המחוברים
+    setInterval(() => { if (TOUR.me && !NET.profile) setOpen(TOUR.me, true); }, 1500);
+  }).catch(() => {});
   window.__ready = R.backend;
   window.__G = G;
 }
@@ -107,10 +115,13 @@ function setupMenu() {
   if (isTouchDevice()) {
     document.querySelector('[data-mode="2p"]').style.display = 'none';
   }
-  $('btn-start').addEventListener('click', startMatch);
+  $('btn-start').addEventListener('click', () => startMatch());
   $('btn-rules').addEventListener('click', () => $('rules').classList.remove('hidden'));
   $('rules-close').addEventListener('click', () => $('rules').classList.add('hidden'));
-  $('btn-again').addEventListener('click', startMatch);
+  $('btn-again').addEventListener('click', () => {
+    if (G.net || G.mode === 'net') { $('over').classList.add('hidden'); toMenu(); $('tour').classList.remove('hidden'); return; }
+    if (TOUR.me && TOUR.db && G.lastTour) startMatch({ tournament: G.lastTour }); else startMatch();
+  });
   $('btn-menu').addEventListener('click', () => { $('over').classList.add('hidden'); toMenu(); });
   $('btn-pause').addEventListener('click', togglePause);
   $('btn-resume').addEventListener('click', togglePause);
@@ -142,6 +153,8 @@ function setupMenu() {
 }
 
 function toMenu() {
+  TOUR.active = false;
+  if (G.net) { G.net = null; endMatch('quit'); }
   G.state = 'menu';
   $('hud').classList.add('hidden');
   $('touch').classList.add('hidden');
@@ -151,11 +164,18 @@ function toMenu() {
 
 function togglePause() {
   if (G.state === 'menu' || G.state === 'over') return;
+  if (G.net) { message('אין הפסקות במשחק אונליין 🙂', 1500); return; }
   G.paused = !G.paused;
   $('pause').classList.toggle('hidden', !G.paused);
 }
 
-function startMatch() {
+function startMatch(opts) {
+  if (G.net) { G.net = null; endMatch('quit'); }
+  if (G.mode === 'net') G.mode = 'ai';
+  const tour = opts && opts.tournament;
+  if (tour) { G.mode = 'ai'; G.difficulty = tour; G.target = 11; TOUR.active = true; TOUR.level = tour; G.lastTour = tour; }
+  else { TOUR.active = false; G.lastTour = null; }
+  $('over-tour').hidden = true;
   SFX.initAudio(); SFX.startAmbience();
   $('menu').classList.add('hidden');
   $('over').classList.add('hidden');
@@ -163,7 +183,7 @@ function startMatch() {
   if (isTouchDevice()) $('touch').classList.remove('hidden');
   G.scores = [0, 0];
   G.players[0].name = G.mode === 'ai' ? 'אתה (אבי)' : 'אבי';
-  G.players[1].name = G.mode === 'ai' ? 'שמוליק מקומה 3' : 'שמוליק';
+  G.players[1].name = G.mode === 'ai' ? 'יניב מקומה 3' : 'יניב';
   G.players[0].speedMul = 1; G.players[1].speedMul = 1;
   G.ai = G.mode === 'ai' ? new AI(G, G.players[1], G.difficulty) : null;
   $('name1').textContent = G.players[0].name;
@@ -199,6 +219,7 @@ function say(p, kind, chance = 1) {
   const list = SLANG[kind];
   const el = $(`say${i}`);
   el.textContent = list[Math.floor(Math.random() * list.length)];
+  if (G.net && G.net.role === 'host') sendEvent({ k: 'say', i, t: el.textContent });
   el.classList.add('show');
   sayPos[i] = p;
   clearTimeout(sayTimers[i]);
@@ -230,7 +251,7 @@ const camKeys = [
   { t: 3, p: [8, 27, 40], l: [0, 2, -8] },
   { t: 5.6, p: [-6, 12, 12], l: [-20, 1.5, -2] },     // ילדים יוצאים מבניין 8
   { t: 7.8, p: [-3.5, 4.4, -7.2], l: [-7.9, 1.5, -14] }, // בניין 12 – אבי
-  { t: 10, p: [6, 5, -6.5], l: [11.5, 1.4, -14.5] },    // בניין 14 – שמוליק
+  { t: 10, p: [6, 5, -6.5], l: [11.5, 1.4, -14.5] },    // בניין 14 – יניב
   { t: 13, p: [-4, 10, 9], l: [0, 0.8, -2] },
 ];
 // מסלולים: [בניין, מתי יוצא, מהירות, נקודות ביניים..., יעד]
@@ -395,8 +416,8 @@ function cineKids(dt, t) {
   const once = (key, at, fn) => { if (t >= at && !G.cineSaid[key]) { G.cineSaid[key] = 1; fn(); } };
   once('c2', 4.4, () => typeCaption('כל השכונה יורדת למטה...'));
   once('c3', 7.4, () => typeCaption('אבי, בניין 12.'));
-  once('s0', 8.8, () => sayText(G.players[0], 'שמוליק! רד כבר!', 'yalla'));
-  once('c4', 9.6, () => typeCaption('שמוליק, בניין 14.'));
+  once('s0', 8.8, () => sayText(G.players[0], 'יניב! רד כבר!', 'yalla'));
+  once('c4', 9.6, () => typeCaption('יניב, בניין 14.'));
   once('s1', 10.8, () => sayText(G.players[1], 'יאללה, מי שמפסיד מביא ארטיק!', 'achla'));
   once('s2', 12.4, () => sayText(G.players[0], 'סבבה, אחי!', 'sababa'));
   once('c5', 13.2, () => typeCaption('סטנגה בשכונה.'));
@@ -436,7 +457,7 @@ function registerTouch(p, type) {
 
 function foul(p) {
   const o = G.other(p);
-  SFX.sfxWhistle(0.35); setTimeout(() => SFX.sfxWhistle(0.35), 420);
+  SFX.sfxWhistle(0.35); setTimeout(() => SFX.sfxWhistle(0.35), 420); if (G.net) sendEvent({ k: 'sfx', n: 'foul' });
   say(o, 'foulOn');
   setTimeout(() => say(p, 'foulBy'), 900);
   pop('נגיעה כפולה!', `בעיטת עונשין ל${o.name} מקו האמצע`, '#ffcf3f', 1800);
@@ -471,6 +492,7 @@ function onGoal(goalSide) {
   award(scorer, pts, title, color);
   SFX.sfxCheer(pts >= 4);
   crowdReact(scorer);
+  if (G.net) sendEvent({ k: 'sfx', n: pts >= 4 ? 'cheer2' : 'cheer' });
   if (pts === POINTS.nutmeg) { say(scorer, 'nutmeg'); setTimeout(() => say(owner, 'nutmegged'), 800); }
   else { say(scorer, 'goal'); setTimeout(() => say(owner, 'conceded', 0.8), 800); }
   if (pts >= 4) G.slowmo = 1.2;
@@ -479,16 +501,148 @@ function onGoal(goalSide) {
 function checkWin() {
   const i = G.scores.findIndex((s) => s >= G.target);
   if (i < 0) return false;
+  if (G.net) sendEvent({ k: 'over', w: i, sc: G.scores.slice() });
+  showOver(i);
+  return true;
+}
+
+function showOver(i) {
   G.state = 'over';
   const w = G.players[i];
   say(w, 'win');
   $('over-title').textContent = `${w.name} ניצח!`;
   $('over-score').textContent = `${G.scores[0]} : ${G.scores[1]}`;
-  $('over-sub').textContent = G.mode === 'ai' ? (i === 0 ? 'מלך השכונה! אמא קוראת לעלות לאכול 🍝' : 'שמוליק מקומה 3 לקח אותך... רוצה נקמה?') : 'מי שמפסיד מביא ארטיק לכולם 🍦';
+  $('over-sub').textContent = G.net ? 'משחק טורניר אונליין – מי שמפסיד מביא ארטיק 🍦' : G.mode === 'ai' ? (i === 0 ? 'מלך השכונה! אמא קוראת לעלות לאכול 🍝' : 'יניב מקומה 3 לקח אותך... רוצה נקמה?') : 'מי שמפסיד מביא ארטיק לכולם 🍦';
   $('over').classList.remove('hidden');
   $('touch').classList.add('hidden');
   SFX.sfxCheer(true);
-  return true;
+  if (TOUR.active) {
+    const el = $('over-tour'); el.hidden = false; el.textContent = 'שומר את התוצאה בטבלת הטורניר...';
+    const meIdx = G.net && G.net.role === 'guest' ? 1 : 0;
+    recordResult(i === meIdx, G.scores[meIdx], G.scores[1 - meIdx]).then((r) => {
+      if (!r) { el.hidden = true; return; }
+      el.textContent = r.error ? 'התוצאה לא נשמרה בטבלה.' : `טורניר השכונה: ${r.add ? `+${r.add} נקודות! ` : ''}אתה במקום ${r.rank} מתוך ${r.of} (${r.pts} נק')`;
+    });
+  }
+}
+
+// ---------- משחק אונליין בין שני שחקנים רשומים ----------
+function startNetMatch(role, opp) {
+  G.paused = false;
+  $('pause').classList.add('hidden');
+  $('tour').classList.add('hidden');
+  $('over').classList.add('hidden');
+  $('menu').classList.add('hidden');
+  $('hud').classList.remove('hidden');
+  if (isTouchDevice()) $('touch').classList.remove('hidden');
+  G.net = { role, seq: 0, lastRemote: 0 };
+  G.mode = 'net'; G.ai = null; G.target = 11;
+  TOUR.active = !!TOUR.me; TOUR.level = 'easy'; // ניצחון אונליין = 3 נקודות
+  $('over-tour').hidden = true;
+  const myNick = (TOUR.me && TOUR.me.nick) || 'אני';
+  G.players[0].name = role === 'host' ? `${myNick} (אתה)` : opp.nick || 'יריב';
+  G.players[1].name = role === 'host' ? opp.nick || 'יריב' : `${myNick} (אתה)`;
+  G.players.forEach((p) => { p.speedMul = 1; p.charge = 0; p.charging = null; p.seenSeq = p.animSeq || 0; });
+  $('name1').textContent = G.players[0].name;
+  $('name2').textContent = G.players[1].name;
+  $('target-lbl').textContent = 'אונליין · עד 11';
+  G.scores = [0, 0]; updateScore();
+  SFX.initAudio(); SFX.startAmbience();
+  if (role === 'host') { setPiece(G.players[0], `פתיחה! ${G.players[0].name} בועט מהאמצע`); SFX.sfxWhistle(0.6); }
+  else { G.state = 'setpiece'; G.kicker = G.players[0]; message('מתחבר למשחק...', 2000); }
+}
+
+function onNetEvent(e) {
+  if (!G.net || G.net.role !== 'guest') return;
+  if (e.k === 'pop' && Array.isArray(e.a)) pop(String(e.a[0] || '').slice(0, 40), String(e.a[1] || '').slice(0, 80), String(e.a[2] || '#fff').slice(0, 20), +e.a[3] || 1400);
+  else if (e.k === 'msg') message(String(e.t || '').slice(0, 120), +e.ms || 2500);
+  else if (e.k === 'say' && (e.i === 0 || e.i === 1)) sayText(G.players[e.i], String(e.t || '').slice(0, 60));
+  else if (e.k === 'sfx') {
+    if (e.n === 'clang') SFX.sfxClang();
+    else if (e.n === 'foul') { SFX.sfxWhistle(0.35); setTimeout(() => SFX.sfxWhistle(0.35), 420); }
+    else if (e.n === 'cheer' || e.n === 'cheer2') { SFX.sfxCheer(e.n === 'cheer2'); crowdReact(); }
+  } else if (e.k === 'over' && (e.w === 0 || e.w === 1) && Array.isArray(e.sc)) {
+    G.scores = [+e.sc[0] || 0, +e.sc[1] || 0]; updateScore();
+    showOver(e.w);
+  }
+}
+
+function onNetEnd(reason) {
+  if (!G.net) return;
+  const wasOver = G.state === 'over';
+  G.net = null;
+  if (!wasOver) { TOUR.active = false; toMenu(); message('היריב יצא מהמשחק. התוצאה לא נרשמה.', 3500); }
+}
+
+const r2 = (v) => Math.round(v * 100) / 100;
+function buildSnapshot() {
+  const b = G.ball;
+  return {
+    st: G.state, k: G.players.indexOf(G.kicker), lt: G.players.indexOf(G.lastToucher), g: b.groundedSinceTouch ? 1 : 0,
+    sc: G.scores, b: [r2(b.pos.x), r2(b.pos.y), r2(b.pos.z), r2(b.vel.x), r2(b.vel.y), r2(b.vel.z)],
+    p: G.players.map((p) => [r2(p.pos.x), r2(p.pos.z), r2(p.vel.x), r2(p.vel.z), r2(p.facing), r2(p.charge), p.animSeq || 0, p.animType || '']),
+  };
+}
+
+function applySnapshot(s, dt) {
+  if (!s || !Array.isArray(s.p) || !Array.isArray(s.b)) return;
+  const k = Math.min(1, dt * 14);
+  if (['setpiece', 'play', 'goal', 'over'].includes(s.st) && G.state !== 'over') G.state = s.st;
+  G.kicker = G.players[s.k] || null;
+  G.lastToucher = G.players[s.lt] || null;
+  G.ball.groundedSinceTouch = !!s.g;
+  if (Array.isArray(s.sc) && (s.sc[0] !== G.scores[0] || s.sc[1] !== G.scores[1])) {
+    const bump = s.sc[0] !== G.scores[0] ? 0 : 1;
+    G.scores = [+s.sc[0] || 0, +s.sc[1] || 0]; updateScore(bump);
+  }
+  const b = G.ball;
+  const tb = new THREE.Vector3(+s.b[0] || 0, +s.b[1] || BALL.r, +s.b[2] || 0);
+  if (b.pos.distanceTo(tb) > 3) b.pos.copy(tb); else b.pos.lerp(tb, k);
+  b.vel.set(+s.b[3] || 0, +s.b[4] || 0, +s.b[5] || 0);
+  s.p.forEach((q, i) => {
+    const p = G.players[i]; if (!p || !Array.isArray(q)) return;
+    const tp = new THREE.Vector3(+q[0] || 0, 0, +q[1] || 0);
+    if (p.pos.distanceTo(tp) > 3) p.pos.copy(tp); else p.pos.lerp(tp, k);
+    p.vel.set(+q[2] || 0, 0, +q[3] || 0);
+    let d = (+q[4] || 0) - p.facing; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2;
+    p.facing += d * k;
+    p.charge = Math.max(0, Math.min(1, +q[5] || 0));
+    const seq = +q[6] || 0;
+    if (seq !== p.seenSeq) {
+      p.seenSeq = seq;
+      const t = String(q[7] || '');
+      if (['kick', 'lob', 'heel', 'scissors', 'head', 'whiff'].includes(t)) { p.play(t); p.seenSeq = seq; if (t !== 'whiff') SFX.sfxKick(0.6); }
+    }
+  });
+}
+
+// האורח: קלט מקומי → נשלח למארח
+function guestControl(dt, now) {
+  const p = G.players[1];
+  const it = readIntent('p1-solo');
+  const w = screenToWorld(it);
+  const held = it.kick ? 'kick' : it.lob ? 'lob' : null;
+  let action = null;
+  if (held) { p.charging = held; p.netCharge = Math.min(1, (p.netCharge || 0) + dt / 0.7); }
+  else if (p.charging) { action = { t: p.charging, p: r2(0.15 + 0.85 * p.netCharge) }; p.charging = null; p.netCharge = 0; }
+  if (it.heel) action = { t: 'heel', p: 0.7 };
+  if (it.scissors) action = { t: 'scissors', p: 1 };
+  if (action) { G.net.seq++; G.net.pendingAction = { n: G.net.seq, ...action }; }
+  sendInput({ x: r2(w.wx), z: r2(w.wz), ch: r2(p.netCharge || 0), a: G.net.pendingAction || null }, now);
+}
+
+// המארח: קלט מרוחק → שחקן 2
+function remoteIntent() {
+  const ri = NET.remoteInput || {};
+  const p = G.players[1];
+  const x = Math.max(-1, Math.min(1, +ri.x || 0)), z = Math.max(-1, Math.min(1, +ri.z || 0));
+  p.charge = Math.max(0, Math.min(1, +ri.ch || 0));
+  const a = ri.a;
+  if (a && +a.n > G.net.lastRemote && ['kick', 'lob', 'heel', 'scissors'].includes(a.t)) {
+    G.net.lastRemote = +a.n;
+    doKick(p, a.t, Math.max(0.15, Math.min(1, +a.p || 0.5)));
+  }
+  return { wx: x, wz: z, face: null };
 }
 
 // ---------- בעיטות ----------
@@ -548,7 +702,7 @@ function segCollide(b, ax, ay, az, bx, by, bz, rad, key, goalIdx) {
   if (vn < 0) {
     b.vel.x -= 1.72 * vn * ux; b.vel.y -= 1.72 * vn * uy; b.vel.z -= 1.72 * vn * uz;
     if (-vn > 1.5) {
-      SFX.sfxClang();
+      SFX.sfxClang(); if (G.net) sendEvent({ k: 'sfx', n: 'clang' });
       shake(0.15);
       const scorer = G.lastToucher;
       const owner = G.players[goalIdx];
@@ -767,6 +921,7 @@ function updateScore(bump) {
 }
 let popTimer = null;
 function pop(title, sub, color, ms) {
+  if (G.net && G.net.role === 'host') sendEvent({ k: 'pop', a: [title, sub, color, ms] });
   const el = $('pop');
   el.querySelector('.t').textContent = title;
   el.querySelector('.s').textContent = sub || '';
@@ -777,6 +932,7 @@ function pop(title, sub, color, ms) {
 }
 let msgTimer = null;
 function message(t, ms) {
+  if (G.net && G.net.role === 'host') sendEvent({ k: 'msg', t, ms });
   const el = $('msg'); el.textContent = t; el.classList.add('show');
   clearTimeout(msgTimer); msgTimer = setTimeout(hideMessage, ms || 2500);
 }
@@ -817,7 +973,12 @@ function loop() {
 
   // שליטה
   let intents = [{ wx: 0, wz: 0 }, { wx: 0, wz: 0 }];
-  if (G.state !== 'menu' && G.state !== 'cinematic') {
+  if (G.net && G.net.role === 'guest') {
+    guestControl(dt, now);
+  } else if (G.net && G.net.role === 'host') {
+    intents[0] = humanControl(G.players[0], 'p1-solo', dt);
+    intents[1] = remoteIntent();
+  } else if (G.state !== 'menu' && G.state !== 'cinematic') {
     intents[0] = humanControl(G.players[0], G.mode === 'ai' ? 'p1-solo' : 'p1', dt);
     if (G.ai) {
       const out = G.ai.think(dt);
@@ -834,7 +995,8 @@ function loop() {
     intents[1] = { wx: 0, wz: 0, face: Math.PI - 0.3 };
   }
 
-  acc += dt;
+  if (G.net && G.net.role === 'guest') { applySnapshot(NET.lastSnap, dt); acc = 0; }
+  else acc += dt;
   while (acc >= STEP) {
     acc -= STEP;
     stepPlayer(G.players[0], intents[0], STEP);
@@ -843,7 +1005,8 @@ function loop() {
     stepBall(STEP);
     if (G.state === 'goal' || G.state === 'over') break;
   }
-  if (G.state === 'goal') {
+  if (G.net && G.net.role === 'host') sendSnapshot(buildSnapshot(), now);
+  if (G.state === 'goal' && !(G.net && G.net.role === 'guest')) {
     G.goalTimer -= dt;
     if (G.goalTimer <= 0 && !checkWin()) setPiece(G.concededBy, `${G.concededBy.name} בועט מהאמצע`);
   }
