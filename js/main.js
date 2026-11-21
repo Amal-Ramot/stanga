@@ -251,8 +251,8 @@ const camKeys = [
   { t: 0, p: [38, 30, 34], l: [0, 0, -6] },
   { t: 3, p: [8, 27, 40], l: [0, 2, -8] },
   { t: 5.6, p: [-6, 12, 12], l: [-20, 1.5, -2] },     // ילדים יוצאים מבניין 8
-  { t: 7.8, p: [-3.5, 4.4, -7.2], l: [-7.9, 1.5, -14] }, // בניין 12 – אבי
-  { t: 10, p: [6, 5, -6.5], l: [11.5, 1.4, -14.5] },    // בניין 14 – יניב
+  { t: 7.8, p: [-4.5, 4.4, -7.4], l: [-7.9, 1.5, -14] }, // בניין 12 – אבי
+  { t: 10, p: [6.5, 7.5, -4.5], l: [11.5, 1.4, -14.5] },    // בניין 14 – יניב
   { t: 13, p: [-4, 10, 9], l: [0, 0.8, -2] },
 ];
 // מסלולים: [בניין, מתי יוצא, מהירות, נקודות ביניים..., יעד]
@@ -385,7 +385,7 @@ function cineCamera(t) {
   }
   cam.updateMatrixWorld();
   R.sun.target.position.set(0, 0, -4);
-  R.sun.position.set(-22, 24, 12);
+  R.sun.position.copy(R.SUN_OFFSET).add(new THREE.Vector3(0, 0, -4));
 }
 function cineKids(dt, t) {
   const intents = [];
@@ -907,7 +907,7 @@ function layoutCamera(snap) {
   cam.getWorldDirection(camUp); camUp.y = 0; camUp.normalize();
   // שמש עוקבת אחרי המצלמה לצללים חדים
   R.sun.target.position.set(camTarget.x, 0, camTarget.z);
-  R.sun.position.set(camTarget.x - 22, 24, camTarget.z + 16);
+  R.sun.position.set(camTarget.x + R.SUN_OFFSET.x, R.SUN_OFFSET.y, camTarget.z + R.SUN_OFFSET.z);
 }
 function shake(a) { G.shake = Math.max(G.shake || 0, a); }
 
