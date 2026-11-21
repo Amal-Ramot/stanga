@@ -96,15 +96,19 @@ function makeBackend() {
       for (const f of peerSubs) f({ peers: peersCache, joined, left, updated: [] });
     };
     ch.on('presence', { event: 'sync' }, () => firePeers());
-    ch.on('presence', { event: 'leave' }, ({ key }) => firePeers([], [{ peer: key }]));
+    // עדכון presence ב-Supabase נשלח כ"יציאה+כניסה" – מדווחים על יציאה רק אם המשתתף באמת נעלם
+    ch.on('presence', { event: 'leave' }, ({ key }) => {
+      setTimeout(() => { if (!ch.presenceState()[key]) firePeers([], [{ peer: key }]); }, 1500);
+    });
     ch.on('broadcast', { event: '*' }, ({ event, payload }) => {
       const fns = listeners[event]; if (!fns || !payload) return;
       const msg = { topic: event, data: payload.data, peer: payload.peer, by: null, isMe: payload.peer === peerId, sameTab: payload.peer === peerId, kind: 'viewer', guest: false };
       for (const f of fns) f(msg);
     });
     const joined = new Promise((resolve) => {
-      ch.subscribe(async (status) => {
+      ch.subscribe(async (status, err) => {
         if (status === 'SUBSCRIBED') { ready = true; await ch.track(state); firePeers(); resolve(); }
+        else if (status !== 'CLOSED') console.warn('realtime', name, status, err && err.message);
       });
       setTimeout(resolve, 8000);
     });
