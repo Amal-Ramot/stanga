@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>סטנגה בשכונה</title>
+<meta name="description" content="סטנגה בשכונה – משחק השכונות של שנות ה-90 בתלת-מימד, בדפדפן.">
+<meta name="theme-color" content="#2a1450">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;900&family=Fredoka:wght@600;700&family=Secular+One&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "./lib/three.webgpu.min.js",
+    "three/webgpu": "./lib/three.webgpu.min.js",
+    "three/tsl": "./lib/three.tsl.min.js",
+    "three/addons/": "./lib/addons/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="game"></div>
+
+<!-- טעינה -->
+<div id="loading" class="screen">
+  <div class="vhs-noise"></div>
+  <div class="load-box">
+    <div class="load-title">סטנגה_בשכונה.exe</div>
+    <div class="load-track"><div id="load-bar"></div></div>
+    <div id="load-msg">מעתיק קבצים מהדיסקט... (1 מתוך 2)</div>
+  </div>
+</div>
+
+<!-- פתיחה בסגנון שנות ה-90 -->
+<div id="intro" class="screen">
+  <div class="jazz"></div>
+  <div class="vhs-osd"><span>▶ PLAY</span><span class="tc">SP 0:19:97</span></div>
+  <div class="intro-center">
+    <div class="burst">1997!</div>
+    <h1 class="logo"><span class="l1" data-t="סטנגה">סטנגה</span><span class="l2">בשכונה</span></h1>
+    <div class="tag">הכדור, השער, השכונה. מי שמפסיד מביא ארטיק.</div>
+    <div class="press">לחצו כדי להתחיל</div>
+  </div>
+  <div class="props">
+    <div class="telecard"><div class="tc-top">טלכרט</div><div class="tc-chip"></div><div class="tc-units">20 יחידות</div></div>
+    <div class="gogoim"><i></i><i></i><i></i><i></i><i></i><i class="tower"></i></div>
+    <div class="tazo z1"><span>⚽</span></div>
+    <div class="tazo z2"><span>⭐</span></div>
+    <div class="popsicle"><div class="ice"></div><div class="stick"></div></div>
+    <div class="cassette"><div class="cas-label">מיקס קיץ 97</div><div class="cas-w"><i></i><i></i></div></div>
+    <div class="sticker nanach"><span>נ</span><span>נח</span><span>נחמ</span><span>נחמן</span><span>מאומן</span></div>
+    <div class="sticker st2">העם עם הגולן</div>
+  </div>
+  <div class="tracking"></div>
+  <div class="scanlines"></div>
+</div>
+
+<!-- תפריט -->
+<div id="menu" class="screen hidden">
+  <div class="panel win">
+    <div class="titlebar"><span>⚽ סטנגה_בשכונה.exe</span><span class="tb-btns"><i>_</i><i>□</i><i>×</i></span></div>
+    <h2 class="logo small"><span class="l1">סטנגה</span><span class="l2">בשכונה</span></h2>
+    <div class="row">
+      <label>מצב</label>
+      <div class="seg">
+        <button data-mode="ai" class="on">נגד שמוליק מקומה 3</button>
+        <button data-mode="2p">שניים על מקלדת אחת</button>
+      </div>
+    </div>
+    <div class="row" id="diff-row">
+      <label>רמה</label>
+      <div class="seg">
+        <button data-diff="easy">קטן מכיתה ב'</button>
+        <button data-diff="medium" class="on">רגיל</button>
+        <button data-diff="hard">מלך השכונה</button>
+      </div>
+    </div>
+    <div class="row">
+      <label>עד</label>
+      <div class="seg">
+        <button data-target="11">11</button>
+        <button data-target="21" class="on">21</button>
+        <button data-target="31">31</button>
+      </div>
+    </div>
+    <button id="btn-start" class="big">יאללה לשחק!</button>
+    <button id="btn-rules" class="link">חוקים ושליטה</button>
+    <div class="credit">מנוע: <span id="backend">…</span> · Three.js · טקסטורות Poly Haven (CC0)</div>
+  </div>
+</div>
+
+<!-- חוקים -->
+<div id="rules" class="screen hidden">
+  <div class="panel rules">
+    <h3>איך משחקים סטנגה?</h3>
+    <ul>
+      <li><b>נגיעה אחת בתור.</b> אחרי שנגעת בכדור, חייב לגעת בו היריב. הטבעת מתחת לרגליים מראה: <span class="g">ירוק</span> מותר לגעת, <span class="r">אדום</span> אסור.</li>
+      <li><b>נגיעה כפולה</b> (נגעת שוב לפני שהיריב נגע) = בעיטת עונשין ליריב מקו האמצע.</li>
+      <li><b>הקפצות:</b> מותר לגעת שוב אם הכדור לא נגע ברצפה בינתיים.</li>
+      <li><b>אין ידיים</b> – גם לא לשוער.</li>
+      <li><b>הבורות באספלט</b> מקפיצים את הכדור לכיוון אקראי. בהצלחה.</li>
+    </ul>
+    <table>
+      <tr><td>גול</td><td>1</td></tr>
+      <tr><td>קורה</td><td>2</td></tr>
+      <tr><td>משקוף</td><td>3</td></tr>
+      <tr><td>גול בעקב</td><td>4</td></tr>
+      <tr><td>גול במספרת</td><td>5</td></tr>
+      <tr><td>בין הרגליים של השומר</td><td>10</td></tr>
+    </table>
+    <h4>שליטה</h4>
+    <div class="keys">
+      <div><b>שחקן 1 (אבי):</b> WASD תנועה · רווח בעיטה (להחזיק = חזק יותר) · Shift שמאלי הרמה · E עקב · Q מספרת</div>
+      <div><b>שחקן 2 (שמוליק):</b> חיצים · Enter בעיטה · Shift ימני הרמה · / עקב · . מספרת</div>
+      <div><b>בטלפון:</b> ג'ויסטיק משמאל וכפתורים מימין. P / Esc להשהיה.</div>
+    </div>
+    <button id="rules-close" class="big">הבנתי</button>
+  </div>
+</div>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div class="board">
+    <div class="side p1"><span id="name1">אבי</span><b id="score1">0</b></div>
+    <div class="mid"><span id="target-lbl">משחקים עד 21</span></div>
+    <div class="side p2"><b id="score2">0</b><span id="name2">שמוליק</span></div>
+  </div>
+  <div id="turn"></div>
+  <div class="hud-btns">
+    <button id="btn-music" title="מוזיקה">📻</button>
+    <button id="btn-sound" title="צליל">🔊</button>
+    <button id="btn-pause" title="השהיה">⏸</button>
+  </div>
+</div>
+<div id="pop"><div class="t"></div><div class="s"></div></div>
+<div id="msg"></div>
+
+<!-- השהיה / סיום -->
+<div id="pause" class="screen hidden">
+  <div class="panel">
+    <h3>אמא קוראת... רגע!</h3>
+    <button id="btn-resume" class="big">ממשיכים</button>
+    <button id="btn-quit" class="link">לתפריט</button>
+  </div>
+</div>
+<div id="over" class="screen hidden">
+  <div class="panel">
+    <h3 id="over-title"></h3>
+    <div id="over-score" class="final"></div>
+    <p id="over-sub"></p>
+    <button id="btn-again" class="big">עוד משחק!</button>
+    <button id="btn-menu" class="link">לתפריט</button>
+  </div>
+</div>
+
+<!-- שליטה במגע -->
+<div id="touch" class="hidden">
+  <div id="joy"><div id="joy-knob"></div></div>
+  <div class="tbtns">
+    <button id="b-kick">בעיטה</button>
+    <button id="b-lob">הרמה</button>
+    <button id="b-heel">עקב</button>
+    <button id="b-sc">מספרת</button>
+  </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
