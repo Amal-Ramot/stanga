@@ -111,14 +111,13 @@ async function startAs(role, name, opp) {
   NET.role = role; NET.opp = opp; NET.lastSnap = null;
   NET.remoteInput = { x: 0, z: 0, ch: 0, a: null };
   setOpen(NET.profile, true);
+  let seen = false;
   NET.match.onPeers((ch) => {
-    const other = ch.peers.find((p) => p.peer === opp.peer);
-    if (other && other.presence) {
-      if (role === 'host' && other.presence.i) NET.remoteInput = other.presence.i;
-      if (role === 'guest' && other.presence.s) NET.lastSnap = other.presence.s;
-    }
-    if (ch.left.some((p) => p.peer === opp.peer)) endMatch('left');
+    if (ch.peers.some((p) => p.peer === opp.peer)) seen = true;
+    if (seen && ch.left.some((p) => p.peer === opp.peer)) endMatch('left');
   }, () => endMatch('left'));
+  if (role === 'host') NET.match.on('in', (m) => { if (m.peer === opp.peer && m.data) NET.remoteInput = m.data; });
+  if (role === 'guest') NET.match.on('st', (m) => { if (m.peer === opp.peer && m.data) NET.lastSnap = m.data; });
   NET.match.on('ev', (m) => { if (m.peer === opp.peer && NET.onEvent) NET.onEvent(m.data || {}); });
   if (NET.onStart) NET.onStart(role, opp);
 }
@@ -126,14 +125,18 @@ async function startAs(role, name, opp) {
 // שליחות בתדירות גבוהה – דרך presence של חדר המשחק
 let lastSend = 0;
 export function sendSnapshot(s, now) {
-  if (!NET.match || now - lastSend < 50) return;
+  if (!NET.match || now - lastSend < 66) return; // ~15 בשנייה
   lastSend = now;
-  NET.match.presence({ s }).catch(() => {});
+  NET.match.emit('st', s).catch(() => {});
 }
+let lastInput = '';
 export function sendInput(i, now) {
-  if (!NET.match || now - lastSend < 33) return;
-  lastSend = now;
-  NET.match.presence({ i }).catch(() => {});
+  if (!NET.match) return;
+  const key = JSON.stringify(i);
+  if (key === lastInput && now - lastSend < 500) return; // שולחים רק כשמשהו השתנה
+  if (now - lastSend < 50) return;
+  lastSend = now; lastInput = key;
+  NET.match.emit('in', i).catch(() => {});
 }
 export function sendEvent(e) {
   if (NET.match && NET.role === 'host') NET.match.emit('ev', e).catch(() => {});

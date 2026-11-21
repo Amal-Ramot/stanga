@@ -1,4 +1,5 @@
 // סטנגה בשכונה – לוגיקת המשחק
+import './backend.js';
 import * as THREE from 'three';
 import { FIELD, BALL, PLAYER, POINTS, POTHOLES } from './config.js';
 import { loadAll, onProgress, fitModel } from './assets.js';
