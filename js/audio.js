@@ -77,6 +77,7 @@ export function sfxWhistle(len = 0.5) {
 export function sfxCheer(big = false) {
   if (!ctx) return;
   const t = ctx.currentTime;
+  shout(t + 0.05, big ? 'aywa' : ['yalla', 'walla', 'achla', 'kapara'][Math.floor(Math.random() * 4)], 4, master);
   const dur = big ? 2.4 : 1.4;
   const n = ctx.createBufferSource(); n.buffer = noiseBuffer(dur);
   const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 900; f.Q.value = 0.6;
@@ -240,6 +241,15 @@ function startMusic(ahead = 0.5) {
       if (bar16 % 4 === 2) for (const n of chord.notes) organ(t, HZ(n), s16 * 1.3, 0.017);
       // סולו – מתחיל בכל תחילת משפט
       if (songStep >= 0 && songStep % PH === 0) leadPhrase(t, phrase, s16);
+      // צעקות על הביט
+      const sp = songStep % (PH * SONG.length);
+      if (songStep === -4) shout(t, 'yalla');                       // לפני כניסת הסולו
+      if (songStep >= 0 && sp === PH * 4 - 4) shout(t, 'yalla');    // לפני העלייה לגבוה
+      if (songStep >= 0 && sp === PH * 6 - 2) shout(t, 'aywa');
+      if (songStep >= 0 && sp === PH * 8 - 4) shout(t, 'opa');
+      if (songStep >= 0 && bar16 === 12 && Math.random() < 0.08) shout(t, 'hey', 2);
+      // סלנג של השכונה על הביט – כל 4 תיבות מילה אחרת
+      if (songStep >= 0 && sp % 64 === 30 && sp !== PH * 4 - 4 && sp !== PH * 6 - 2) shout(t, ['sababa', 'achi', 'walla', 'kapara', 'achla', 'habibi'][Math.floor(songStep / 64) % 6]);
       step++;
       next += s16;
     }
@@ -297,6 +307,71 @@ function leadPhrase(t0, phrase, s16) {
   }
   g.gain.setTargetAtTime(0, t0 + total - 0.04, 0.03);
   for (const x of [o, o2, vib]) { x.start(t0); x.stop(t0 + total + 0.2); }
+}
+
+// ---------- צעקות וסלנג של השכונה – סינתזת פורמנטים ----------
+// פונמה: F = שלושה פורמנטים, v = קוליות, n = רעש (נשיפה/שריקה), a = עוצמה
+const PH = {
+  a: { F: [800, 1250, 2600], v: 1, n: 0.2, a: 1 }, e: { F: [550, 1850, 2550], v: 1, n: 0.2, a: 1 },
+  i: { F: [300, 2250, 2950], v: 1, n: 0.2, a: 0.8 }, o: { F: [520, 900, 2450], v: 1, n: 0.2, a: 1 },
+  y: { F: [290, 2200, 2900], v: 1, n: 0.1, a: 0.5 }, l: { F: [380, 1000, 2500], v: 1, n: 0.1, a: 0.5 },
+  w: { F: [320, 720, 2300], v: 1, n: 0.1, a: 0.55 }, n: { F: [280, 1100, 2500], v: 1, n: 0, a: 0.45 },
+  r: { F: [600, 1300, 2600], v: 0.6, n: 0.9, a: 0.5 }, b: { F: [300, 900, 2300], v: 0.4, n: 0, a: 0.06 },
+  p: { F: [300, 900, 2300], v: 0, n: 0.6, a: 0.04 }, k: { F: [1500, 2200, 3000], v: 0, n: 1, a: 0.05 },
+  h: { F: [550, 1850, 2550], v: 0, n: 1.4, a: 0.18 }, x: { F: [1300, 2300, 3300], v: 0, n: 1.6, a: 0.35 },
+  s: { F: [4800, 6400, 8200], v: 0, n: 1.8, a: 0.35 },
+};
+const WORDS = {
+  yalla: { f0: [240, 300, 210], seg: [['y', 0.05], ['a', 0.11], ['l', 0.045], ['a', 0.24]] },
+  aywa: { f0: [260, 310, 200], seg: [['a', 0.1], ['y', 0.07], ['w', 0.06], ['a', 0.26]] },
+  hey: { f0: [280, 330, 250], seg: [['h', 0.05], ['e', 0.2]] },
+  opa: { f0: [250, 290, 220], seg: [['o', 0.1], ['p', 0.04], ['a', 0.2]] },
+  sababa: { f0: [230, 280, 200], seg: [['s', 0.09], ['a', 0.08], ['b', 0.035], ['a', 0.08], ['b', 0.035], ['a', 0.22]] },
+  achi: { f0: [250, 300, 230], seg: [['a', 0.12], ['x', 0.09], ['i', 0.22]] },
+  walla: { f0: [220, 290, 190], seg: [['w', 0.06], ['a', 0.13], ['l', 0.05], ['a', 0.25]] },
+  kapara: { f0: [240, 290, 210], seg: [['k', 0.04], ['a', 0.09], ['p', 0.04], ['a', 0.08], ['r', 0.05], ['a', 0.22]] },
+  achla: { f0: [240, 300, 200], seg: [['a', 0.11], ['x', 0.08], ['l', 0.045], ['a', 0.24]] },
+  habibi: { f0: [250, 300, 220], seg: [['h', 0.05], ['a', 0.09], ['b', 0.035], ['i', 0.08], ['b', 0.035], ['i', 0.22]] },
+};
+export const SLANG = ['sababa', 'achi', 'walla', 'kapara', 'achla', 'habibi', 'yalla', 'aywa'];
+export function shout(t, word, crowd = 3, dest) {
+  if (!ctx) return;
+  t = t ?? ctx.currentTime + 0.02;
+  const w = WORDS[word]; if (!w) return;
+  const out = dest || (amb ? amb.music : master);
+  const total = w.seg.reduce((a, s) => a + s[1], 0);
+  for (let v = 0; v < crowd; v++) {
+    const tv = t + v * 0.018 + Math.random() * 0.02;
+    const pm = 1 + (v - 1) * 0.06 + (Math.random() - 0.5) * 0.04;
+    const src = ctx.createOscillator(); src.type = 'sawtooth';
+    src.frequency.setValueAtTime(w.f0[0] * pm, tv);
+    src.frequency.linearRampToValueAtTime(w.f0[1] * pm, tv + total * 0.35);
+    src.frequency.linearRampToValueAtTime(w.f0[2] * pm, tv + total);
+    const vg = ctx.createGain(); vg.gain.value = 1;
+    const noise = ctx.createBufferSource(); noise.buffer = noiseBuffer(total + 0.15);
+    const ng = ctx.createGain(); ng.gain.value = 0.2;
+    src.connect(vg); noise.connect(ng);
+    const env = ctx.createGain(); env.gain.setValueAtTime(0, tv);
+    const fs = [0, 1, 2].map((k) => {
+      const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = [6, 9, 11][k];
+      const g = ctx.createGain(); g.gain.value = [1, 0.6, 0.35][k];
+      vg.connect(f); ng.connect(f); f.connect(g).connect(env);
+      return f;
+    });
+    let tt = tv;
+    for (const [ph, dur] of w.seg) {
+      const P = PH[ph];
+      fs.forEach((f, k) => f.frequency.setTargetAtTime(P.F[k] * (1 + (pm - 1) * 0.5), tt, 0.012));
+      env.gain.setTargetAtTime(P.a, tt, 0.01);
+      vg.gain.setTargetAtTime(P.v, tt, 0.008);
+      ng.gain.setTargetAtTime(P.n, tt, 0.008);
+      tt += dur;
+    }
+    env.gain.setTargetAtTime(0, tt - 0.04, 0.035);
+    const mix = ctx.createGain(); mix.gain.value = 0.55 / crowd;
+    env.connect(mix).connect(out);
+    src.start(tv); noise.start(tv); src.stop(tt + 0.2); noise.stop(tt + 0.2);
+  }
 }
 
 function clap(t) {

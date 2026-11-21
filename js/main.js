@@ -202,6 +202,7 @@ function registerTouch(p, type) {
 function foul(p) {
   const o = G.other(p);
   SFX.sfxWhistle(0.35); setTimeout(() => SFX.sfxWhistle(0.35), 420);
+  setTimeout(() => SFX.shout(undefined, 'achi', 2), 900);
   pop('נגיעה כפולה!', `בעיטת עונשין ל${o.name} מקו האמצע`, '#ffcf3f', 1800);
   setPiece(o, `${p.name} נגע פעמיים ברצף. בעיטת עונשין!`);
 }
@@ -312,6 +313,7 @@ function segCollide(b, ax, ay, az, bx, by, bz, rad, key, goalIdx) {
       const owner = G.players[goalIdx];
       if (G.state === 'play' && scorer && scorer !== owner && !G.hits.has(key)) {
         G.hits.add(key);
+        SFX.shout(undefined, Math.random() < 0.5 ? 'walla' : 'opa', 3);
         if (key.endsWith('bar')) award(scorer, POINTS.crossbar, 'משקוף!', '#ffb300');
         else award(scorer, POINTS.post, 'קורה!', '#ffb300');
         if (checkWin()) return;
