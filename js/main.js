@@ -42,6 +42,12 @@ const G = {
 
 let R, W, A;
 let quality = 'high';
+try { G.camMode = localStorage.getItem('stanga-cam') || 'low'; } catch { G.camMode = 'low'; }
+function toggleCam() {
+  G.camMode = G.camMode === 'high' ? 'low' : 'high';
+  try { localStorage.setItem('stanga-cam', G.camMode); } catch {}
+  const b = document.getElementById('btn-cam'); if (b) b.title = G.camMode === 'high' ? 'מבט נמוך' : 'מבט מלמעלה';
+}
 
 // ---------- אתחול ----------
 async function boot() {
@@ -125,6 +131,7 @@ function setupMenu() {
   });
   $('btn-menu').addEventListener('click', () => { $('over').classList.add('hidden'); toMenu(); });
   $('btn-pause').addEventListener('click', togglePause);
+  $('btn-cam').addEventListener('click', toggleCam);
   $('btn-resume').addEventListener('click', togglePause);
   $('btn-quit').addEventListener('click', () => { $('pause').classList.add('hidden'); G.paused = false; toMenu(); });
   $('btn-sound').addEventListener('click', () => {
@@ -149,6 +156,7 @@ function setupMenu() {
   addEventListener('keydown', (e) => {
     if (!intro.classList.contains('hidden')) { go(); return; }
     if (G.state === 'cinematic') { endCinematic(); return; }
+    if (e.code === 'KeyC' && G.state !== 'cinematic') toggleCam();
     if ((e.code === 'Escape' || e.code === 'KeyP') && (G.state === 'play' || G.state === 'setpiece' || G.paused)) togglePause();
   });
 }
@@ -886,15 +894,17 @@ let portrait = false;
 function layoutCamera(snap) {
   const cam = R.camera;
   portrait = innerWidth / innerHeight < 0.95;
-  const tilt = THREE.MathUtils.degToRad(portrait ? 58 : 50);
+  const low = G.camMode !== 'high';
+  // זווית נמוכה: רואים את השכונה מסביב (כמו שידור). זווית גבוהה: מבט על
+  const tilt = THREE.MathUtils.degToRad(low ? (portrait ? 40 : 27) : (portrait ? 58 : 50));
   const vt = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2));
   const aspect = innerWidth / innerHeight;
-  const hw = portrait ? 7 : 10, hd = portrait ? 10.5 : 7;
+  const hw = portrait ? 7 : 10, hd = (portrait ? 10.5 : 7) * (low ? 0.78 : 1);
   const dist = Math.max(hw / (vt * aspect), hd * Math.sin(tilt) / vt) * 1.05;
   const b = G.ball ? G.ball.pos : new THREE.Vector3();
   const focus = G.state === 'menu' ? new THREE.Vector3(0, 0, 0.5) : new THREE.Vector3(
     THREE.MathUtils.clamp(b.x * 0.85, portrait ? -8 : -8.5, portrait ? 8 : 8.5), 0,
-    THREE.MathUtils.clamp(b.z * 0.7, portrait ? -4.5 : -4, portrait ? 4.5 : 3.5));
+    THREE.MathUtils.clamp(b.z * 0.7, portrait ? -4.5 : -4, portrait ? 4.5 : 3.5) + (low && !portrait ? 0.8 : 0));
   if (snap) camTarget.copy(focus); else camTarget.lerp(focus, 0.06);
   const off = portrait
     ? new THREE.Vector3(-Math.cos(tilt), Math.sin(tilt), 0).multiplyScalar(dist)
