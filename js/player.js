@@ -250,7 +250,7 @@ export class Player {
   }
 
   play(type) {
-    const dur = { kick: 0.34, lob: 0.38, heel: 0.36, scissors: 0.8, head: 0.32, whiff: 0.32 }[type] || 0.3;
+    const dur = { kick: 0.34, lob: 0.38, heel: 0.36, scissors: 0.8, head: 0.32, whiff: 0.32, cheer: 1.4, sad: 1.2 }[type] || 0.3;
     this.anim = { type, t: 0, dur };
   }
 
@@ -314,6 +314,13 @@ export class Player {
       } else if (a.type === 'head') {
         this.chest.rotation.x = 0.5 * sn; this.body.position.y += 0.28 * sn;
         for (const A of this.arms) A.sh.rotation.z = A.s * 0.6 * sn;
+      } else if (a.type === 'cheer') {
+        // קפיצות שמחה וידיים למעלה
+        this.body.position.y += Math.abs(Math.sin(p * Math.PI * 3)) * 0.22;
+        for (const A of this.arms) { A.sh.rotation.z = A.s * 2.6 * Math.min(1, sn * 3); A.elbow.rotation.x = -0.2; }
+      } else if (a.type === 'sad') {
+        this.chest.rotation.x = 0.35 * Math.min(1, sn * 3); this.head.rotation.x = 0.4 * Math.min(1, sn * 3);
+        for (const A of this.arms) A.sh.rotation.z = A.s * 0.05;
       } else if (a.type === 'scissors') {
         this.body.rotation.x = -1.5 * sn;
         this.body.position.y += 0.75 * sn;
@@ -340,3 +347,13 @@ export const KIDS = {
   p1: { name: 'אבי', shirt: '#a9cbe8', logo: '#1d3f78', school: 'בי"ס אחד העם', pants: '#3c5a86', denim: true, skin: '#e2b08a', hair: '#2a1a10', shoe: '#e9e9e4', marker: '#2f7de0', attackDir: 1 },
   p2: { name: 'שמוליק', shirt: '#f3f1ea', logo: '#a3262c', school: 'בי"ס ביאליק', pants: '#5a5d63', denim: false, longPants: true, skin: '#c48e62', hair: '#140c07', shoe: '#2c2c2c', cap: '#c9302c', capBack: true, marker: '#e0442f', attackDir: -1 },
 };
+
+// ילדי השכונה שיורדים לראות את המשחק
+export const EXTRA_KIDS = [
+  { shirt: '#f2efe6', logo: '#1d5a3a', school: 'בי"ס הרצל', pants: '#2f3f66', denim: true, skin: '#e8bb94', hair: '#6b3e1f', shoe: '#ddd', longHair: true },
+  { shirt: '#e6c34a', logo: '#333', school: '', pants: '#4a4a4a', skin: '#b9804f', hair: '#120a05', shoe: '#222', longPants: true },
+  { shirt: '#9fc2df', logo: '#1d3f78', school: 'בי"ס אחד העם', pants: '#3a5a86', denim: true, skin: '#d9a27a', hair: '#2a1a10', shoe: '#ececec', cap: '#2a5ea8' },
+  { shirt: '#c94b4b', logo: '#fff', school: '', pants: '#22252b', skin: '#f0c9a8', hair: '#b8862e', shoe: '#ececec', longHair: true },
+  { shirt: '#f3f1ea', logo: '#a3262c', school: 'בי"ס ביאליק', pants: '#5a5d63', longPants: true, skin: '#a8714a', hair: '#0f0905', shoe: '#2c2c2c' },
+  { shirt: '#6f9e6a', logo: '#fff', school: '', pants: '#3c5a86', denim: true, skin: '#e2b08a', hair: '#3b2414', shoe: '#e9e9e4', longHair: true },
+];

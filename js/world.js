@@ -232,11 +232,14 @@ function balconyUnit(B, F, x, y0, bw, FH, wallMat, opts) {
 }
 
 function entranceUnit(B, F, x, FH, floors, wallMat, perfMat, numMat) {
-  B.add(M.perfBack, new THREE.PlaneGeometry(1.5, 2.3), F.clone().multiply(M4(x, 1.15, 0.01)));
-  B.add(M.door, boxW(0.68, 2.15, 0.05, 1), F.clone().multiply(M4(x - 0.36, 1.08, 0.03)));
-  B.add(M.door, boxW(0.68, 2.15, 0.05, 1), F.clone().multiply(M4(x + 0.36, 1.08, 0.03)));
-  B.add(M.glass, new THREE.PlaneGeometry(0.4, 1.2), F.clone().multiply(M4(x - 0.36, 1.3, 0.06)));
-  B.add(M.glass, new THREE.PlaneGeometry(0.4, 1.2), F.clone().multiply(M4(x + 0.36, 1.3, 0.06)));
+  // פתח כניסה כהה ודלת פתוחה (כמו תמיד בשיכון)
+  B.add(M.perfBack, new THREE.PlaneGeometry(1.5, 2.3), F.clone().multiply(M4(x, 1.15, 0.06)));
+  B.add(M.alu, new THREE.BoxGeometry(1.62, 0.07, 0.1), F.clone().multiply(M4(x, 2.32, 0.07)));
+  for (const s of [-1, 1]) B.add(M.alu, new THREE.BoxGeometry(0.07, 2.3, 0.1), F.clone().multiply(M4(x + s * 0.78, 1.15, 0.07)));
+  B.add(M.door, boxW(0.68, 2.15, 0.05, 1), F.clone().multiply(M4(x + 0.72 - 0.34 * Math.cos(1.2), 1.08, 0.1 + 0.34 * Math.sin(1.2), 0, -1.2, 0)));
+  B.add(M.door, boxW(0.68, 2.15, 0.05, 1), F.clone().multiply(M4(x - 0.36, 1.08, 0.09)));
+  B.add(M.glass, new THREE.PlaneGeometry(0.4, 1.2), F.clone().multiply(M4(x - 0.36, 1.3, 0.12)));
+  B.add(M.concrete, boxW(1.9, 0.08, 0.5, 1), F.clone().multiply(M4(x, 0.04, 0.3)));
   B.add(M.concrete, boxW(2.4, 0.16, 1.2, 1.5), F.clone().multiply(M4(x, 2.62, 0.6)));
   B.add(numMat, new THREE.PlaneGeometry(0.56, 0.42), F.clone().multiply(M4(x + 1.1, 2.2, 0.03)));
   for (let f = 1; f < floors; f++) {
@@ -347,6 +350,11 @@ function building(scene, { x, z, w, d, floors, rotY = 0, sides = [], num = 7, st
   root.position.set(x, 0, z);
   root.rotation.y = rotY;
   scene.add(root);
+  // מיקום הכניסה בעולם (לפתיחה – הילדים יורדים מהבניינים)
+  const ex = -w / 2 + (mid + 0.5) * bw;
+  const door = new THREE.Vector3(ex, 0, d / 2 + 0.3).applyAxisAngle(new THREE.Vector3(0, 1, 0), rotY).add(new THREE.Vector3(x, 0, z));
+  const out = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), rotY);
+  return { door, out, num, street };
 }
 
 // ---------- עצים ----------
@@ -679,12 +687,16 @@ function hedgeRow(scene, A, x0, x1, z) {
   // משוכה: ליבה כהה + כרטיסי עלים
   const B = new Batch();
   const len = x1 - x0;
-  B.add(M.leafInner, new THREE.BoxGeometry(len, 0.85, 0.6), M4((x0 + x1) / 2, 0.42, z));
-  const lm = treeMaterials()[1];
-  const n = Math.floor(len * 9);
+  B.add(M.leafInner, new THREE.BoxGeometry(len - 0.3, 0.7, 0.45), M4((x0 + x1) / 2, 0.38, z));
+  const mats = treeMaterials();
+  const n = Math.floor(len * 26);
   for (let i = 0; i < n; i++) {
-    const sz = rr(0.55, 0.85);
-    B.add(lm, new THREE.PlaneGeometry(sz, sz), M4(rr(x0, x1), rr(0.25, 0.95), z + rr(-0.38, 0.38), rr(0, Math.PI), rr(0, Math.PI), rr(0, Math.PI)));
+    const sz = rr(0.45, 0.75);
+    const side = rand();
+    const px = rr(x0 + 0.1, x1 - 0.1);
+    const py = side < 0.3 ? rr(0.75, 0.98) : rr(0.15, 0.9);
+    const pz = side < 0.3 ? z + rr(-0.25, 0.25) : z + (rand() < 0.5 ? -1 : 1) * rr(0.18, 0.34);
+    B.add(mats[i % 2], new THREE.PlaneGeometry(sz, sz), M4(px, py, pz, rr(0, Math.PI), rr(0, Math.PI), rr(0, Math.PI)));
   }
   B.build(scene);
 }
@@ -772,19 +784,24 @@ export function buildWorld(scene, A) {
     sticker(scene, 3, xs - s * 0.005, 0.7, 3.4, ry, 0.45);
   }
 
-  hedgeRow(scene, A, -BX, BX, -(BZ + 0.3));
+  // מעבר בגדר החיה – הקיצור של הילדים מהבניין למגרש
+  hedgeRow(scene, A, -BX, -9.0, -(BZ + 0.3));
+  hedgeRow(scene, A, -6.9, 11.0, -(BZ + 0.3));
+  hedgeRow(scene, A, 13.0, BX, -(BZ + 0.3));
   hedgeRow(scene, A, -BX, BX, BZ + 0.3);
 
   goal(scene, -FIELD.goalX, -1);
   goal(scene, FIELD.goalX, 1);
 
-  building(scene, { x: -9.5, z: -19, w: 19, d: 10, floors: 4, sides: ['nx', 'px'], num: 12, street: 'הרצל', graffitiCount: 3 });
-  building(scene, { x: 12, z: -20, w: 15, d: 10, floors: 3, sides: ['px', 'nx'], num: 14, street: 'הרצל', graffitiCount: 3 });
-  building(scene, { x: -27.5, z: -1, w: 22, d: 10, floors: 4, rotY: Math.PI / 2, sides: ['px'], num: 8, street: "ז'בוטינסקי" });
-  building(scene, { x: 27.5, z: -2, w: 20, d: 10, floors: 3, rotY: -Math.PI / 2, sides: ['nx'], num: 9, street: 'רמב"ם' });
-  building(scene, { x: -25, z: -27, w: 13, d: 10, floors: 6, num: 3, street: 'העצמאות' });
-  building(scene, { x: 28, z: -27, w: 15, d: 10, floors: 4, num: 5, street: 'העצמאות' });
-  building(scene, { x: 0, z: -37, w: 26, d: 10, floors: 8, num: 21, street: 'בן גוריון' });
+  const doors = {};
+  const reg = (b) => { doors[b.num] = b; };
+  reg(building(scene, { x: -9.5, z: -19, w: 19, d: 10, floors: 4, sides: ['nx', 'px'], num: 12, street: 'הרצל', graffitiCount: 3 }));
+  reg(building(scene, { x: 12, z: -20, w: 15, d: 10, floors: 3, sides: ['px', 'nx'], num: 14, street: 'הרצל', graffitiCount: 3 }));
+  reg(building(scene, { x: -27.5, z: -1, w: 22, d: 10, floors: 4, rotY: Math.PI / 2, sides: ['px'], num: 8, street: "ז'בוטינסקי" }));
+  reg(building(scene, { x: 27.5, z: -2, w: 20, d: 10, floors: 3, rotY: -Math.PI / 2, sides: ['nx'], num: 9, street: 'רמב"ם' }));
+  reg(building(scene, { x: -25, z: -27, w: 13, d: 10, floors: 6, num: 3, street: 'העצמאות' }));
+  reg(building(scene, { x: 28, z: -27, w: 15, d: 10, floors: 4, num: 5, street: 'העצמאות' }));
+  reg(building(scene, { x: 0, z: -37, w: 26, d: 10, floors: 8, num: 21, street: 'בן גוריון' }));
 
   const road = mesh(scaleUV(new THREE.PlaneGeometry(160, 6.5), 160 / 4, 6.5 / 4), pbrMaterial(A, 'worn_asphalt', { color: '#9a9c9f' }), false);
   road.rotation.x = -Math.PI / 2; road.position.set(0, 0.006, 17.5); scene.add(road);
@@ -834,7 +851,7 @@ export function buildWorld(scene, A) {
     cat(scene, -(BX + 0.25), 1.08, 3.5),
     cat(scene, 14.3, 1.52, -11.6, '#3a3a3a'),
   ];
-  return { trees, clothes, cats };
+  return { trees, clothes, cats, doors };
 }
 
 export function animateWorld(w, t) {

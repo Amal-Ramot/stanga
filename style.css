@@ -204,3 +204,17 @@ button { font-family: inherit; cursor: pointer; }
 .logo.small .l1 { font-size: clamp(42px, 8vw, 64px); }
 .logo.small .l2 { font-size: clamp(28px, 5vw, 40px); }
 .burst { left: -90px; top: -30px; }
+
+/* בועות דיבור של הילדים */
+#bubbles { position: fixed; inset: 0; pointer-events: none; z-index: 9; }
+.bubble-say { position: absolute; left: 0; top: 0; transform: translate(-50%, -100%) scale(.6); opacity: 0; transition: opacity .15s, transform .15s; padding: 6px 12px; background: #fffdf5; color: #1d1b26; border: 3px solid #1d1b26; border-radius: 14px; font: 900 17px 'Rubik', sans-serif; white-space: nowrap; box-shadow: 3px 3px 0 rgba(0,0,0,.35); }
+.bubble-say::after { content: ''; position: absolute; left: 50%; bottom: -12px; margin-left: -8px; border: 8px solid transparent; border-top-color: #1d1b26; }
+.bubble-say.show { opacity: 1; transform: translate(-50%, -100%) scale(1); }
+
+/* פתיחה קולנועית */
+#cine { position: fixed; inset: 0; z-index: 25; pointer-events: none; }
+#cine .bar { position: absolute; left: 0; right: 0; height: 11vh; background: #000; transition: height .8s; }
+#cine .bar.top { top: 0; } #cine .bar.bottom { bottom: 0; }
+#cine.out .bar { height: 0; }
+#cine-cap { position: absolute; right: 6vw; bottom: calc(11vh + 18px); color: #f3ece0; font: 700 clamp(18px, 2.6vw, 28px) 'Rubik', sans-serif; text-shadow: 2px 2px 0 #000, 0 0 12px rgba(0,0,0,.6); white-space: pre-line; min-height: 1.4em; }
+#cine-skip { position: absolute; left: 18px; bottom: 18px; pointer-events: auto; padding: 6px 14px; font: 700 15px 'Rubik', sans-serif; color: #f3ece0; background: rgba(0,0,0,.5); border: 2px solid #f3ece0; border-radius: 4px; }

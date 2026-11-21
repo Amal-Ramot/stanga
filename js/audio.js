@@ -77,8 +77,7 @@ export function sfxWhistle(len = 0.5) {
 export function sfxCheer(big = false) {
   if (!ctx) return;
   const t = ctx.currentTime;
-  shout(t + 0.05, big ? 'aywa' : ['yalla', 'walla', 'achla', 'kapara'][Math.floor(Math.random() * 4)], 4, master);
-  const dur = big ? 2.4 : 1.4;
+    const dur = big ? 2.4 : 1.4;
   const n = ctx.createBufferSource(); n.buffer = noiseBuffer(dur);
   const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 900; f.Q.value = 0.6;
   const g = ctx.createGain();
@@ -241,15 +240,6 @@ function startMusic(ahead = 0.5) {
       if (bar16 % 4 === 2) for (const n of chord.notes) organ(t, HZ(n), s16 * 1.3, 0.017);
       // סולו – מתחיל בכל תחילת משפט
       if (songStep >= 0 && songStep % PH === 0) leadPhrase(t, phrase, s16);
-      // צעקות על הביט
-      const sp = songStep % (PH * SONG.length);
-      if (songStep === -4) shout(t, 'yalla');                       // לפני כניסת הסולו
-      if (songStep >= 0 && sp === PH * 4 - 4) shout(t, 'yalla');    // לפני העלייה לגבוה
-      if (songStep >= 0 && sp === PH * 6 - 2) shout(t, 'aywa');
-      if (songStep >= 0 && sp === PH * 8 - 4) shout(t, 'opa');
-      if (songStep >= 0 && bar16 === 12 && Math.random() < 0.08) shout(t, 'hey', 2);
-      // סלנג של השכונה על הביט – כל 4 תיבות מילה אחרת
-      if (songStep >= 0 && sp % 64 === 30 && sp !== PH * 4 - 4 && sp !== PH * 6 - 2) shout(t, ['sababa', 'achi', 'walla', 'kapara', 'achla', 'habibi'][Math.floor(songStep / 64) % 6]);
       step++;
       next += s16;
     }
@@ -334,15 +324,15 @@ const WORDS = {
   habibi: { f0: [250, 300, 220], seg: [['h', 0.05], ['a', 0.09], ['b', 0.035], ['i', 0.08], ['b', 0.035], ['i', 0.22]] },
 };
 export const SLANG = ['sababa', 'achi', 'walla', 'kapara', 'achla', 'habibi', 'yalla', 'aywa'];
-export function shout(t, word, crowd = 3, dest) {
+export function shout(t, word, crowd = 3, dest, pitch = 1) {
   if (!ctx) return;
   t = t ?? ctx.currentTime + 0.02;
   const w = WORDS[word]; if (!w) return;
-  const out = dest || (amb ? amb.music : master);
+  const out = dest || master;
   const total = w.seg.reduce((a, s) => a + s[1], 0);
   for (let v = 0; v < crowd; v++) {
     const tv = t + v * 0.018 + Math.random() * 0.02;
-    const pm = 1 + (v - 1) * 0.06 + (Math.random() - 0.5) * 0.04;
+    const pm = pitch * (1 + (v - 1) * 0.06 + (Math.random() - 0.5) * 0.04);
     const src = ctx.createOscillator(); src.type = 'sawtooth';
     src.frequency.setValueAtTime(w.f0[0] * pm, tv);
     src.frequency.linearRampToValueAtTime(w.f0[1] * pm, tv + total * 0.35);

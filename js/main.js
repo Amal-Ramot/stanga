@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { FIELD, BALL, PLAYER, POINTS, POTHOLES } from './config.js';
 import { loadAll, onProgress, fitModel } from './assets.js';
 import { buildWorld, animateWorld } from './world.js';
-import { Player, KIDS } from './player.js';
+import { Player, KIDS, EXTRA_KIDS } from './player.js';
 import { AI } from './ai.js';
 import { initInput, readIntent, endFrame, isTouchDevice, consumeEdge } from './input.js';
 import { createRenderer } from './render.js';
@@ -53,12 +53,13 @@ async function boot() {
   $('backend').textContent = R.backend;
 
   G.players = [new Player(R.scene, KIDS.p1), new Player(R.scene, KIDS.p2)];
+  makeExtras();
+  placeExtrasAtSpots();
   makeBall();
   placeForMenu();
   layoutCamera(true);
 
   $('loading').classList.add('hidden');
-  $('menu').classList.remove('hidden');
   setupMenu();
   R.renderer.setAnimationLoop(loop);
   window.__ready = R.backend;
@@ -128,11 +129,14 @@ function setupMenu() {
   const go = () => {
     if (intro.classList.contains('hidden')) return;
     intro.classList.add('hidden');
-    SFX.initAudio(); SFX.startAmbience(); SFX.sfxCheer(false);
+    SFX.initAudio(); SFX.startAmbience();
+    startCinematic();
   };
+  $('cine-skip').addEventListener('click', (e) => { e.stopPropagation(); endCinematic(); });
   intro.addEventListener('click', go);
   addEventListener('keydown', (e) => {
     if (!intro.classList.contains('hidden')) { go(); return; }
+    if (G.state === 'cinematic') { endCinematic(); return; }
     if ((e.code === 'Escape' || e.code === 'KeyP') && (G.state === 'play' || G.state === 'setpiece' || G.paused)) togglePause();
   });
 }
@@ -170,6 +174,240 @@ function startMatch() {
   SFX.sfxWhistle(0.6);
 }
 
+// ---------- סלנג של השכונה (שנות ה-90) ----------
+const SLANG = {
+  goal: ['גווווול!', 'יא מלך!', 'שיחקת אותה!', 'אין עליי!', 'פצצה!', 'קלאסה!', 'רגל של זהב!', 'אש!'],
+  conceded: ['פדיחה...', 'נו באמת!', 'זה לא נחשב!', 'מזל של מתחילים', 'חוזר! לא הייתי מוכן', 'יא חוצפן!'],
+  nutmeg: ['בין הרגליים!! חחחח', 'עברת בשער של המשפחה!'],
+  nutmegged: ['פאדיחה!!!', 'אמא שלי ראתה מהמרפסת...'],
+  post: ['חבל על הזמן!', 'וואלה, קורה!', 'כמעט!!', 'אוףףף'],
+  postSaved: ['מזל!', 'הקורה איתי!', 'יוווו'],
+  foulBy: ['מה פתאום?!', 'בחיים לא!', 'לא נגעתי!', 'דמיינת, אחי'],
+  foulOn: ['אחי! נגעת פעמיים!', 'פאול! פנדל!', 'יא רמאי!', 'עונשין!!'],
+  pothole: ['חוזר! זה הבור!', 'הבור הזה...', 'וואלה העירייה...'],
+  kickoff: ['יאללה בלגן!', 'סבבה, מתחילים', 'יאללה, תביא!', 'מוכן?'],
+  juggle: ['אחלה הקפצות!', 'כמו בטלוויזיה!'],
+  scissors: ['כמו ברזילאי!', 'אוה! מספרת!'],
+  heel: ['עקב של זהב!', 'ראית את זה?!'],
+  win: ['מלך השכונה!', 'יאללה, מי מביא ארטיק?'],
+};
+const SLANG_AUDIO = { goal: ['yalla', 'achla', 'kapara', 'walla', 'aywa'], post: ['walla', 'opa'], foulOn: ['achi'], nutmeg: ['aywa'], kickoff: ['yalla', 'sababa'], conceded: ['achi', 'habibi'], juggle: ['achla'] };
+const sayTimers = [null, null];
+const sayPos = [null, null];
+function say(p, kind, chance = 1) {
+  if (!p || Math.random() > chance) return;
+  const i = G.players.indexOf(p);
+  const list = SLANG[kind];
+  const el = $(`say${i}`);
+  el.textContent = list[Math.floor(Math.random() * list.length)];
+  el.classList.add('show');
+  sayPos[i] = p;
+  clearTimeout(sayTimers[i]);
+  sayTimers[i] = setTimeout(() => { el.classList.remove('show'); sayPos[i] = null; }, 1900);
+  const aw = SLANG_AUDIO[kind];
+  if (aw) SFX.shout(undefined, aw[Math.floor(Math.random() * aw.length)], 1, undefined, i === 0 ? 1.45 : 1.3);
+}
+function sayText(p, text, audioWord) {
+  const i = G.players.indexOf(p);
+  const el = $(`say${i}`);
+  el.textContent = text; el.classList.add('show');
+  sayPos[i] = p;
+  clearTimeout(sayTimers[i]);
+  sayTimers[i] = setTimeout(() => { el.classList.remove('show'); sayPos[i] = null; }, 2200);
+  if (audioWord) SFX.shout(undefined, audioWord, 1, undefined, i === 0 ? 1.45 : 1.3);
+}
+function updateBubbles() {
+  for (let i = 0; i < 2; i++) {
+    if (!sayPos[i]) continue;
+    const v = sayPos[i].pos.clone(); v.y = 1.75;
+    v.project(R.camera);
+    const el = $(`say${i}`);
+    el.style.left = `${(v.x * 0.5 + 0.5) * innerWidth}px`;
+    el.style.top = `${(-v.y * 0.5 + 0.5) * innerHeight}px`;
+  }
+}
+
+// ---------- פתיחה קולנועית: השכונה, והילדים יורדים מהבניין ----------
+const CINE_LEN = 16;
+const camKeys = [
+  { t: 0, p: [38, 30, 34], l: [0, 0, -6] },
+  { t: 3, p: [8, 27, 40], l: [0, 2, -8] },
+  { t: 5.6, p: [-6, 12, 12], l: [-20, 1.5, -2] },     // ילדים יוצאים מבניין 8
+  { t: 7.8, p: [-3.5, 4.4, -7.2], l: [-7.9, 1.5, -14] }, // בניין 12 – אבי
+  { t: 10, p: [6, 5, -6.5], l: [11.5, 1.4, -14.5] },    // בניין 14 – שמוליק
+  { t: 13, p: [-4, 10, 9], l: [0, 0.8, -2] },
+];
+// מסלולים: [בניין, מתי יוצא, מהירות, נקודות ביניים..., יעד]
+function kidPaths(doors) {
+  const d = (n) => doors[n] ? [doors[n].door.x, doors[n].door.z] : [0, -14];
+  const out = (n, k = 1.6) => { const b = doors[n]; return b ? [b.door.x + b.out.x * k, b.door.z + b.out.z * k] : [0, -12]; };
+  return {
+    main: [
+      { b: 12, appear: 7.6, speed: 2.4, path: [d(12), out(12, 1.9), [-7.9, -10.3], [-6.5, -8.0], [-1.5, 0.8]] },
+      { b: 14, appear: 9.4, speed: 2.4, path: [d(14), out(14, 2.6), [12.0, -10.3], [10, -8], [1.8, -0.6]] },
+    ],
+    extras: [
+      { b: 8, appear: 4.6, speed: 1.9, path: [d(8), out(8, 1.5), [-19.2, -6], [-17.7, -4.5]] },
+      { b: 8, appear: 5.3, speed: 1.7, path: [d(8), out(8, 1.2), [-19.4, 1], [-17.7, 1.8]] },
+      { b: 9, appear: 6.0, speed: 1.8, path: [d(9), out(9, 1.4), [19.6, -5], [17.8, -5.5]] },
+      { b: 9, appear: 6.6, speed: 1.6, path: [d(9), out(9, 1.2), [19.4, 0.8], [17.8, 0.4]] },
+      { b: 12, appear: 8.6, speed: 2.0, path: [d(12), out(12, 1.6), [-8.1, -10.3], [-9, -8.6], [-3.2, -11.25]] },
+      { b: 14, appear: 10.2, speed: 1.9, path: [d(14), out(14, 2.2), [12.2, -10.3], [11.5, -8.6], [5.0, -11.2]] },
+    ],
+  };
+}
+let PATHS = null;
+// ילדי השכונה – צופים מסביב למגרש
+function makeExtras() {
+  const n = quality === 'low' ? 4 : EXTRA_KIDS.length;
+  G.extras = EXTRA_KIDS.slice(0, n).map((o) => {
+    const k = new Player(R.scene, { ...o, attackDir: 1, name: '' });
+    k.ring.visible = false; k.arrow.visible = false;
+    k.root.scale.setScalar(0.9 + Math.random() * 0.12);
+    return k;
+  });
+}
+function placeExtrasAtSpots() {
+  if (!PATHS) PATHS = kidPaths(W.doors);
+  G.extras.forEach((k, i) => {
+    const p = PATHS.extras[i].path; const e = p[p.length - 1];
+    k.pos.set(e[0], 0, e[1]); k.vel.set(0, 0, 0); k.root.visible = true; k.script = null;
+  });
+}
+function updateExtras(dt) {
+  for (const k of G.extras) {
+    if (k.script) {
+      const sc = k.script;
+      if (G.cineT < sc.appear) { k.root.visible = false; k.vel.set(0, 0, 0); }
+      else {
+        k.root.visible = true;
+        const wp = sc.path[Math.min(k.wp, sc.path.length - 1)];
+        const dx = wp[0] - k.pos.x, dz = wp[1] - k.pos.z, d = Math.hypot(dx, dz);
+        if (d < 0.25 && k.wp < sc.path.length - 1) k.wp++;
+        if (d > 0.05) {
+          const v = Math.min(sc.speed, d * 3);
+          k.vel.set(dx / d * v, 0, dz / d * v);
+          k.pos.addScaledVector(k.vel, dt);
+          k.facing = Math.atan2(dz, dx);
+        } else { k.vel.set(0, 0, 0); if (k.wp >= sc.path.length - 1) k.script = null; }
+      }
+    } else {
+      k.vel.multiplyScalar(0.8);
+      // מסתכלים על הכדור
+      const want = Math.atan2(G.ball.pos.z - k.pos.z, G.ball.pos.x - k.pos.x);
+      let d = want - k.facing; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2;
+      k.facing += d * Math.min(1, dt * 3);
+    }
+    k.update(dt, G.time);
+  }
+}
+function crowdReact(scorer) {
+  for (const k of G.extras) if (!k.script) setTimeout(() => k.play(Math.random() < 0.75 ? 'cheer' : 'sad'), Math.random() * 400);
+}
+let camCurve, lookCurve;
+function startCinematic() {
+  G.state = 'cinematic';
+  G.cineT = 0;
+  G.cineSaid = {};
+  camCurve = new THREE.CatmullRomCurve3(camKeys.map((k) => new THREE.Vector3(...k.p)), false, 'centripetal');
+  lookCurve = new THREE.CatmullRomCurve3(camKeys.map((k) => new THREE.Vector3(...k.l)), false, 'centripetal');
+  if (!PATHS) PATHS = kidPaths(W.doors);
+  G.players.forEach((p, i) => {
+    const k = PATHS.main[i];
+    p.pos.set(k.path[0][0], 0, k.path[0][1]); p.vel.set(0, 0, 0);
+    p.facing = Math.PI / 2; p.root.visible = false; p.cineWp = 1;
+    p.ring.visible = false; p.arrow.visible = false;
+  });
+  G.extras.forEach((k, i) => {
+    const sc = PATHS.extras[i];
+    k.pos.set(sc.path[0][0], 0, sc.path[0][1]); k.root.visible = false; k.script = sc; k.wp = 1;
+  });
+  G.ball.mesh.visible = false;
+  $('cine').classList.remove('hidden', 'out');
+  typeCaption("שכונה ג', קיץ 1997.\nאחרי בית הספר...", 0.6);
+}
+let capTimer = null;
+function typeCaption(text, delay = 0) {
+  clearInterval(capTimer);
+  const el = $('cine-cap'); el.textContent = '';
+  let i = 0;
+  setTimeout(() => { capTimer = setInterval(() => { el.textContent = text.slice(0, ++i); if (i >= text.length) clearInterval(capTimer); }, 55); }, delay * 1000);
+}
+function endCinematic() {
+  if (G.state !== 'cinematic') return;
+  clearInterval(capTimer);
+  G.players.forEach((p) => { p.root.visible = true; p.ring.visible = true; p.arrow.visible = true; });
+  G.ball.mesh.visible = true;
+  placeExtrasAtSpots();
+  $('cine').classList.add('out');
+  setTimeout(() => $('cine').classList.add('hidden'), 800);
+  toMenu();
+  layoutCamera(true);
+}
+function cineCamera(t) {
+  const times = camKeys.map((k) => k.t);
+  const n = camKeys.length;
+  const cam = R.camera;
+  if (t < times[n - 1]) {
+    let i = 0; while (i < n - 2 && t > times[i + 1]) i++;
+    let f = (t - times[i]) / (times[i + 1] - times[i]);
+    f = f * f * (3 - 2 * f);
+    const u = (i + f) / (n - 1);
+    cam.position.copy(camCurve.getPoint(u));
+    cam.lookAt(lookCurve.getPoint(u));
+  } else {
+    // נחיתה רכה אל מצלמת המשחק
+    const from = camCurve.getPoint(1), fromL = lookCurve.getPoint(1);
+    G.state = 'menu'; layoutCamera(true); G.state = 'cinematic';
+    const toP = R.camera.position.clone(), toL = camTarget.clone();
+    let f = Math.min(1, (t - times[n - 1]) / (CINE_LEN - times[n - 1]));
+    f = f * f * (3 - 2 * f);
+    cam.position.copy(from.lerp(toP, f));
+    cam.lookAt(fromL.lerp(toL, f));
+  }
+  cam.updateMatrixWorld();
+  R.sun.target.position.set(0, 0, -4);
+  R.sun.position.set(-22, 24, 12);
+}
+function cineKids(dt, t) {
+  const intents = [];
+  G.players.forEach((p, i) => {
+    const k = PATHS.main[i];
+    if (t < k.appear) { intents.push({ wx: 0, wz: 0 }); return; }
+    p.root.visible = true;
+    const wp = k.path[Math.min(p.cineWp, k.path.length - 1)];
+    const dx = wp[0] - p.pos.x, dz = wp[1] - p.pos.z, d = Math.hypot(dx, dz);
+    if (d < 0.3 && p.cineWp < k.path.length - 1) p.cineWp++;
+    const last = p.cineWp === k.path.length - 1;
+    const sp = (last ? k.speed * 1.6 : k.speed) / PLAYER.speed;
+    if (last && d < 0.15) intents.push({ wx: 0, wz: 0, face: i === 0 ? 0.2 : Math.PI - 0.3 });
+    else intents.push({ wx: dx / (d || 1) * Math.min(1, d) * sp, wz: dz / (d || 1) * Math.min(1, d) * sp });
+  });
+  // אבי מכדרר את הכדור
+  const p1 = G.players[0];
+  if (p1.root.visible) {
+    G.ball.mesh.visible = true;
+    const f = p1.forward();
+    const target = tmpV.set(p1.pos.x + f.x * 0.5, BALL.r, p1.pos.z + f.z * 0.5);
+    if (t > 14) target.set(-0.6, BALL.r, 0.9);
+    const prev = G.ball.pos.clone();
+    G.ball.pos.lerp(target, Math.min(1, dt * 8));
+    G.ball.vel.copy(G.ball.pos).sub(prev).divideScalar(Math.max(dt, 1e-4));
+    G.ball.vel.y = 0;
+  }
+  // דיאלוג
+  const once = (key, at, fn) => { if (t >= at && !G.cineSaid[key]) { G.cineSaid[key] = 1; fn(); } };
+  once('c2', 4.4, () => typeCaption('כל השכונה יורדת למטה...'));
+  once('c3', 7.4, () => typeCaption('אבי, בניין 12.'));
+  once('s0', 8.8, () => sayText(G.players[0], 'שמוליק! רד כבר!', 'yalla'));
+  once('c4', 9.6, () => typeCaption('שמוליק, בניין 14.'));
+  once('s1', 10.8, () => sayText(G.players[1], 'יאללה, מי שמפסיד מביא ארטיק!', 'achla'));
+  once('s2', 12.4, () => sayText(G.players[0], 'סבבה, אחי!', 'sababa'));
+  once('c5', 13.2, () => typeCaption('סטנגה בשכונה.'));
+  once('end', CINE_LEN, endCinematic);
+  return intents;
+}
+
 // ---------- מצבים ----------
 function setPiece(kicker, msg) {
   const other = G.other(kicker);
@@ -184,11 +422,12 @@ function setPiece(kicker, msg) {
   other.pos.set(-other.attackDir * (FIELD.goalX - 0.6), 0, 0); other.vel.set(0, 0, 0);
   other.facing = other.attackDir > 0 ? 0 : Math.PI;
   message(msg, 2600);
+  setTimeout(() => say(kicker, 'kickoff', 0.7), 400);
 }
 
 function registerTouch(p, type) {
   if (G.lastToucher === p && G.ball.groundedSinceTouch) { foul(p); return false; }
-  if (G.lastToucher === p) { G.juggles++; if (G.juggles >= 2) pop(`הקפצה ×${G.juggles}`, '', '#fff', 700); }
+  if (G.lastToucher === p) { G.juggles++; if (G.juggles >= 2) pop(`הקפצה ×${G.juggles}`, '', '#fff', 700); if (G.juggles === 3) say(G.other(p), 'juggle'); }
   else G.juggles = 0;
   G.lastToucher = p;
   G.lastTouchTime = G.time;
@@ -202,7 +441,8 @@ function registerTouch(p, type) {
 function foul(p) {
   const o = G.other(p);
   SFX.sfxWhistle(0.35); setTimeout(() => SFX.sfxWhistle(0.35), 420);
-  setTimeout(() => SFX.shout(undefined, 'achi', 2), 900);
+  say(o, 'foulOn');
+  setTimeout(() => say(p, 'foulBy'), 900);
   pop('נגיעה כפולה!', `בעיטת עונשין ל${o.name} מקו האמצע`, '#ffcf3f', 1800);
   setPiece(o, `${p.name} נגע פעמיים ברצף. בעיטת עונשין!`);
 }
@@ -225,6 +465,7 @@ function onGoal(goalSide) {
     const o = G.other(owner);
     award(o, POINTS.goal, 'גול עצמי!', '#ff8a65');
     SFX.sfxCheer(false);
+    say(o, 'goal'); setTimeout(() => say(owner, 'conceded'), 700);
     return;
   }
   let pts = POINTS.goal, title = 'גול!', color = '#7CFC00';
@@ -233,6 +474,9 @@ function onGoal(goalSide) {
   else if (G.shotType === 'heel') { pts = POINTS.heel; title = 'גול בעקב!'; color = '#ffd54f'; }
   award(scorer, pts, title, color);
   SFX.sfxCheer(pts >= 4);
+  crowdReact(scorer);
+  if (pts === POINTS.nutmeg) { say(scorer, 'nutmeg'); setTimeout(() => say(owner, 'nutmegged'), 800); }
+  else { say(scorer, 'goal'); setTimeout(() => say(owner, 'conceded', 0.8), 800); }
   if (pts >= 4) G.slowmo = 1.2;
 }
 
@@ -241,6 +485,7 @@ function checkWin() {
   if (i < 0) return false;
   G.state = 'over';
   const w = G.players[i];
+  say(w, 'win');
   $('over-title').textContent = `${w.name} ניצח!`;
   $('over-score').textContent = `${G.scores[0]} : ${G.scores[1]}`;
   $('over-sub').textContent = G.mode === 'ai' ? (i === 0 ? 'מלך השכונה! אמא קוראת לעלות לאכול 🍝' : 'שמוליק מקומה 3 לקח אותך... רוצה נקמה?') : 'מי שמפסיד מביא ארטיק לכולם 🍦';
@@ -285,8 +530,8 @@ function doKick(p, type, power) {
   G.lastKickTime = G.time;
   G.kickerGrace = p;
   SFX.sfxKick(type === 'scissors' ? 1 : power);
-  if (type === 'scissors') { G.slowmo = 0.7; pop('מספרת!', '', '#00e5ff', 700); }
-  if (type === 'heel') pop('עקב!', '', '#ffd54f', 600);
+  if (type === 'scissors') { G.slowmo = 0.7; pop('מספרת!', '', '#00e5ff', 700); say(G.other(p), 'scissors', 0.7); }
+  if (type === 'heel') { pop('עקב!', '', '#ffd54f', 600); say(p, 'heel', 0.5); }
 }
 
 // ---------- פיזיקה ----------
@@ -313,7 +558,7 @@ function segCollide(b, ax, ay, az, bx, by, bz, rad, key, goalIdx) {
       const owner = G.players[goalIdx];
       if (G.state === 'play' && scorer && scorer !== owner && !G.hits.has(key)) {
         G.hits.add(key);
-        SFX.shout(undefined, Math.random() < 0.5 ? 'walla' : 'opa', 3);
+        say(scorer, 'post'); setTimeout(() => say(owner, 'postSaved', 0.6), 700);
         if (key.endsWith('bar')) award(scorer, POINTS.crossbar, 'משקוף!', '#ffb300');
         else award(scorer, POINTS.post, 'קורה!', '#ffb300');
         if (checkWin()) return;
@@ -358,7 +603,7 @@ function playerBallCollide(p) {
 
 function stepBall(dt) {
   const b = G.ball;
-  if (G.state === 'setpiece' || G.state === 'menu') return;
+  if (G.state === 'setpiece' || G.state === 'menu' || G.state === 'cinematic') return;
   const prev = b.pos.clone();
   b.vel.y -= BALL.gravity * dt;
   const drag = 1 - BALL.airDrag * dt;
@@ -391,7 +636,7 @@ function stepBall(dt) {
         const vx = b.vel.x * c - b.vel.z * s, vz = b.vel.x * s + b.vel.z * c;
         b.vel.x = vx * 0.72; b.vel.z = vz * 0.72; b.vel.y = 0.6 + sp * 0.18;
         SFX.sfxBounce(3);
-        if (sp > 3) pop('בור!', '', '#bbb', 500);
+        if (sp > 3) { pop('בור!', '', '#bbb', 500); say(G.lastToucher ? G.other(G.lastToucher) : G.players[0], 'pothole', 0.5); }
       } else { b.vel.x *= 0.5; b.vel.z *= 0.5; }
     }
     b.hole = inHole;
@@ -432,8 +677,10 @@ function stepPlayer(p, intent, dt) {
   const dl = Math.hypot(dvx, dvz), maxDv = PLAYER.accel * dt;
   if (dl > maxDv) { p.vel.x += dvx / dl * maxDv; p.vel.z += dvz / dl * maxDv; } else { p.vel.x = tvx; p.vel.z = tvz; }
   p.pos.x += p.vel.x * dt; p.pos.z += p.vel.z * dt;
-  p.pos.x = Math.max(-FIELD.boundX + 0.3, Math.min(FIELD.boundX - 0.3, p.pos.x));
-  p.pos.z = Math.max(-FIELD.boundZ + 0.3, Math.min(FIELD.boundZ - 0.3, p.pos.z));
+  if (G.state !== 'cinematic') {
+    p.pos.x = Math.max(-FIELD.boundX + 0.3, Math.min(FIELD.boundX - 0.3, p.pos.x));
+    p.pos.z = Math.max(-FIELD.boundZ + 0.3, Math.min(FIELD.boundZ - 0.3, p.pos.z));
+  }
   // כיוון פנים
   let target = null;
   if (intent.face != null) target = intent.face;
@@ -574,13 +821,16 @@ function loop() {
 
   // שליטה
   let intents = [{ wx: 0, wz: 0 }, { wx: 0, wz: 0 }];
-  if (G.state !== 'menu') {
+  if (G.state !== 'menu' && G.state !== 'cinematic') {
     intents[0] = humanControl(G.players[0], G.mode === 'ai' ? 'p1-solo' : 'p1', dt);
     if (G.ai) {
       const out = G.ai.think(dt);
       intents[1] = out;
       if (out.action) doKick(G.players[1], out.action.type, out.action.power);
     } else intents[1] = humanControl(G.players[1], 'p2', dt);
+  } else if (G.state === 'cinematic') {
+    G.cineT += dt;
+    intents = cineKids(dt, G.cineT);
   } else {
     // בתפריט – הילדים מתמסרים בעצלתיים
     const t = G.time;
@@ -604,6 +854,7 @@ function loop() {
 
   // עדכון גרפי
   for (const p of G.players) p.update(dt, G.time);
+  updateExtras(dt);
   const b = G.ball;
   b.mesh.position.copy(b.pos);
   const sp = Math.hypot(b.vel.x, b.vel.z);
@@ -612,8 +863,9 @@ function loop() {
     b.spin.rotateOnWorldAxis(axis, sp / BALL.r * dt);
   }
   animateWorld(W, G.time);
-  layoutCamera(false);
-  if (G.state !== 'menu') updateTurnHud();
+  if (G.state === 'cinematic') cineCamera(G.cineT); else layoutCamera(false);
+  if (G.state !== 'menu' && G.state !== 'cinematic') updateTurnHud();
+  updateBubbles();
   R.render();
   endFrame();
 }
