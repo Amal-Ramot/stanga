@@ -305,6 +305,8 @@ export class Player {
     this.mixer.update(Math.random() * 2);
     const B = (n) => m.getObjectByName(n);
     this.bones = { legR: B('UpperLegR'), kneeR: B('LowerLegR'), legL: B('UpperLegL'), kneeL: B('LowerLegL'), hips: B('Hips'), torso: B('Torso'), armR: B('UpperArmR'), armL: B('UpperArmL') };
+    // תנוחת המנוחה של כל עצם – משחזרים לפני כל פריים כדי שתוספות לא יצטברו
+    this.boneRest = Object.values(this.bones).filter(Boolean).map((b) => [b, b.quaternion.clone(), b.position.clone()]);
     this.emote = null;
   }
 
@@ -357,6 +359,7 @@ export class Player {
       A.walk.setEffectiveWeight(w); A.idle.setEffectiveWeight(1 - w);
       A.walk.timeScale = 1 + k * 1.9; // הליכה מהירה = ריצה מצחיקה
     }
+    for (const [bn, q, p0] of this.boneRest) { bn.quaternion.copy(q); bn.position.copy(p0); }
     this.mixer.update(dt);
     // תוספות על השלד: טעינה, בעיטות ומספרת
     const b = this.bones;
@@ -367,10 +370,10 @@ export class Player {
       const p = Math.min(1, a.t);
       const sn = Math.sin(Math.PI * p);
       if (a.type === 'kick' || a.type === 'whiff') { b.legR.rotation.x -= 1.5 * sn - 0.5 * (1 - p); b.kneeR.rotation.x += 0.4 * (1 - sn); }
-      else if (a.type === 'lob') { b.legR.rotation.x -= 1.9 * sn; b.torso.rotation.x -= 0.3 * sn; }
+      else if (a.type === 'lob') { b.legR.rotation.x -= 1.6 * sn; if (b.torso) b.torso.rotation.x -= 0.15 * sn; }
       else if (a.type === 'heel') { b.legR.rotation.x += 0.7 * sn; b.kneeR.rotation.x -= 1.6 * sn; }
       else if (a.type === 'head') { b.torso.rotation.x += 0.5 * sn; this.model.position.y = 0.25 * sn; }
-      else if (a.type === 'scissors') { this.model.rotation.x = -1.4 * sn; this.model.position.y = 0.7 * sn; b.legR.rotation.x -= 2.0 * sn; b.legL.rotation.x += 0.9 * sn; }
+      else if (a.type === 'scissors') { this.model.rotation.x = -0.6 * sn; this.model.position.y = 0.55 * sn; b.legR.rotation.x -= 1.8 * Math.sin(Math.PI * Math.min(1, p * 1.3)); b.legL.rotation.x += 0.7 * sn; }
     }
   }
 
