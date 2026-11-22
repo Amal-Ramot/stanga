@@ -58,7 +58,7 @@ export async function loadAll() {
   }
   for (const n of MODELS) {
     jobs.push(new Promise((res) => {
-      gltfLoader.load(`assets/models/${n}/${n}.json`, (g) => {
+      gltfLoader.load(`assets/models/${n}/${n}.gltf`, (g) => {
         g.scene.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
         A.models[n] = g.scene; res();
       }, undefined, () => res());
@@ -68,10 +68,7 @@ export async function loadAll() {
   for (const n of KID_MODELS) {
     jobs.push((async () => {
       try {
-        const j = await (await fetch(`assets/kids/${n}.json`)).json();
-        const bin = atob(j.glb); const buf = new Uint8Array(bin.length);
-        for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
-        const g = await new Promise((res, rej) => gltfLoader.parse(buf.buffer, '', res, rej));
+        const g = await gltfLoader.loadAsync(`assets/kids/${n}.glb`);
         g.scene.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; } });
         A.kids[n] = { scene: g.scene, animations: g.animations };
       } catch (e) { console.warn('kid', n, e); }
@@ -80,10 +77,8 @@ export async function loadAll() {
   // שמיים (HDR מקודד ב-JSON כדי שכל שרת יגיש אותו)
   jobs.push((async () => {
     try {
-      const j = await (await fetch('assets/hdri/sky_1k.json')).json();
-      const bin = atob(j.b64); const buf = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
-      const d = hdrLoader.parse(buf.buffer);
+      const buf = await (await fetch('assets/hdri/sky_1k.hdr')).arrayBuffer();
+      const d = hdrLoader.parse(buf);
       const t = new THREE.DataTexture(d.data, d.width, d.height);
       t.type = d.type; t.colorSpace = THREE.LinearSRGBColorSpace; t.flipY = true;
       t.minFilter = t.magFilter = THREE.LinearFilter; t.generateMipmaps = false; t.needsUpdate = true;
