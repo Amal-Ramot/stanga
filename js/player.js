@@ -373,7 +373,20 @@ export class Player {
       else if (a.type === 'lob') { b.legR.rotation.x -= 1.6 * sn; if (b.torso) b.torso.rotation.x -= 0.15 * sn; }
       else if (a.type === 'heel') { b.legR.rotation.x += 0.7 * sn; b.kneeR.rotation.x -= 1.6 * sn; }
       else if (a.type === 'head') { b.torso.rotation.x += 0.5 * sn; this.model.position.y = 0.25 * sn; }
-      else if (a.type === 'scissors') { this.model.rotation.x = -0.6 * sn; this.model.position.y = 0.55 * sn; b.legR.rotation.x -= 1.8 * Math.sin(Math.PI * Math.min(1, p * 1.3)); b.legL.rotation.x += 0.7 * sn; }
+      else if (a.type === 'scissors') {
+        // מספרת: קפיצה, הגוף נשכב לאחור סביב האגן, רגל שמאל עולה ואז רגל ימין מצליפה מעל הראש
+        const h = 0.55 * (this.model.scale.y * 3.25 / 1.42); // גובה האגן
+        const lean = -1.25 * Math.sin(Math.PI * Math.min(1, p * 1.15));
+        this.model.rotation.x = lean;
+        this.model.position.y = h - h * Math.cos(lean) + 0.65 * sn;
+        this.model.position.z = -h * Math.sin(lean);
+        const s1 = Math.sin(Math.PI * Math.min(1, p * 2));            // רגל שמאל – חצי ראשון
+        const s2 = Math.sin(Math.PI * Math.max(0, Math.min(1, (p - 0.25) * 1.6))); // רגל ימין – מצליפה
+        b.legL.rotation.x -= 1.5 * s1; b.kneeL.rotation.x += 0.9 * s1;
+        b.legR.rotation.x -= 2.3 * s2; b.kneeR.rotation.x += 0.5 * (1 - s2) * sn;
+        if (b.armL) b.armL.rotation.z += 1.1 * sn;
+        if (b.armR) b.armR.rotation.z -= 1.1 * sn;
+      }
     }
   }
 
