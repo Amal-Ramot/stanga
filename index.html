@@ -142,7 +142,7 @@
 
 <!-- חוקים -->
 <div id="rules" class="screen hidden">
-  <div class="panel rules">
+  <div class="panel win rules">
     <h3>איך משחקים סטנגה?</h3>
     <ul>
       <li><b>נגיעה אחת בתור.</b> אחרי שנגעת בכדור, חייב לגעת בו היריב. הטבעת מתחת לרגליים מראה: <span class="g">ירוק</span> מותר לגעת, <span class="r">אדום</span> אסור.</li>
@@ -160,10 +160,19 @@
       <tr><td>בין הרגליים של השומר</td><td>10</td></tr>
     </table>
     <h4>שליטה</h4>
-    <div class="keys">
-      <div><b>שחקן 1 (אבי):</b> WASD תנועה · רווח בעיטה (להחזיק = חזק יותר) · Shift שמאלי הרמה · E עקב · Q מספרת</div>
-      <div><b>שחקן 2 (יניב):</b> חיצים · Enter בעיטה · Shift ימני הרמה · / עקב · . מספרת</div>
-      <div><b>בטלפון:</b> ג'ויסטיק משמאל וכפתורים מימין. P / Esc להשהיה.</div>
+    <div class="keys-wrap">
+      <table class="keys-table">
+        <thead><tr><th>פעולה</th><th>נגד יניב / שחקן 1</th><th>שחקן 2 (שניים על מקלדת)</th></tr></thead>
+        <tbody>
+          <tr><td>ריצה</td><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> או <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></td><td><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></td></tr>
+          <tr><td>בעיטה <small>(להחזיק = חזק יותר)</small></td><td><kbd class="wide">רווח</kbd></td><td><kbd class="wide">Enter</kbd></td></tr>
+          <tr><td>הרמה <small>(כדור גבוה)</small></td><td><kbd class="wide">Shift</kbd> <small>שמאלי</small></td><td><kbd class="wide">Shift</kbd> <small>ימני</small></td></tr>
+          <tr><td>בעיטת עקב <small>(אחורה)</small></td><td><kbd>E</kbd></td><td><kbd>/</kbd></td></tr>
+          <tr><td>מספרת <small>(כשהכדור באוויר)</small></td><td><kbd>Q</kbd></td><td><kbd>.</kbd></td></tr>
+          <tr><td>השהיה</td><td colspan="2"><kbd>P</kbd> או <kbd>Esc</kbd></td></tr>
+        </tbody>
+      </table>
+      <p class="keys-mobile"><b>בטלפון:</b> ג'ויסטיק בצד שמאל לריצה, וכפתורים בצד ימין: בעיטה, הרמה, עקב ומספרת.</p>
     </div>
     <button id="rules-close" class="big">הבנתי</button>
   </div>
@@ -231,6 +240,7 @@
 </div>
 <div id="pop"><div class="t"></div><div class="s"></div></div>
 <div id="msg"></div>
+<div id="keys-hint" class="hidden"><span><kbd>W A S D</kbd> / <kbd>↑ ← ↓ →</kbd> ריצה</span><span><kbd>רווח</kbd> בעיטה (להחזיק = חזק)</span><span><kbd>Shift</kbd> הרמה</span><span><kbd>E</kbd> עקב</span><span><kbd>Q</kbd> מספרת</span></div>
 <div id="bubbles"><div class="bubble-say" id="say0"></div><div class="bubble-say" id="say1"></div></div>
 
 <!-- השהיה / סיום -->

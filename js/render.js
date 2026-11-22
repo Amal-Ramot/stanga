@@ -7,7 +7,7 @@ import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 export async function createRenderer(container, A, quality) {
   const renderer = new THREE.WebGPURenderer({ antialias: true, powerPreference: 'high-performance' });
   await renderer.init();
-  renderer.setPixelRatio(Math.min(devicePixelRatio, quality === 'high' ? 2 : 1.5));
+  renderer.setPixelRatio(1);
   renderer.setSize(innerWidth, innerHeight);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -30,8 +30,7 @@ export async function createRenderer(container, A, quality) {
   const sun = new THREE.DirectionalLight('#ffdcae', 3.6);
   sun.position.copy(SUN_OFFSET);
   sun.castShadow = true;
-  const sm = quality === 'high' ? 4096 : 2048;
-  sun.shadow.mapSize.set(sm, sm);
+  sun.shadow.mapSize.set(quality === 'low' ? 1024 : 2048, quality === 'low' ? 1024 : 2048);
   Object.assign(sun.shadow.camera, { left: -40, right: 40, top: 36, bottom: -36, near: 1, far: 120 });
   sun.shadow.bias = -0.0004;
   sun.shadow.normalBias = 0.03;
@@ -44,19 +43,20 @@ export async function createRenderer(container, A, quality) {
   const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.5, 400);
 
   // פוסט-פרוססינג קולנועי: הצללה סביבתית (AO), זוהר (Bloom), תיקון צבע, וינייטה והחלקת קצוות (FXAA)
-  let post = null;
-  if (quality !== 'low') {
+  let post = null, postTried = false;
+  function buildPost() {
+    postTried = true;
     try {
       post = new THREE.PostProcessing(renderer);
       post.outputColorTransform = false;
       // MSAA – קצוות חלקים בלי לטשטש את התמונה
-      const scenePass = pass(scene, camera, { samples: quality === 'high' ? 4 : 2 });
+      const scenePass = pass(scene, camera, { samples: 4 });
       scenePass.setMRT(mrt({ output, normal: normalView }));
       const color = scenePass.getTextureNode('output');
       const depth = scenePass.getTextureNode('depth');
       const normal = scenePass.getTextureNode('normal');
       const aoPass = ao(depth, normal, camera);
-      aoPass.resolutionScale = quality === 'high' ? 0.75 : 0.5;
+      aoPass.resolutionScale = 0.5;
       aoPass.radius.value = 0.6;
       aoPass.thickness.value = 1.2;
       const lit = color.rgb.mul(aoPass.getTextureNode().r);
@@ -78,6 +78,30 @@ export async function createRenderer(container, A, quality) {
     }
   }
 
+  // רמות גרפיקה – המשחק בוחר לבד לפי מהירות המכשיר
+  //  high:   הצללה סביבתית + זוהר + תיקון צבע, רזולוציה עד ×1.5, צללים 2048
+  //  medium: בלי אפקטים, רזולוציה ×1, צללים 2048
+  //  low:    רזולוציה ×0.75, צללים 1024 – רץ חלק גם על מחשבים וטלפונים חלשים
+  let level = quality;
+  // גודל מפת הצללים נקבע פעם אחת (החלפה תוך כדי ריצה שוברת חומרים שקופים כמו עלים ועשב)
+  function setShadow(n, radius) { sun.shadow.radius = radius; }
+  function setQuality(l) {
+    level = l;
+    if (l === 'high') {
+      if (!postTried) buildPost();
+      renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+      setShadow(2048, 3);
+    } else if (l === 'medium') {
+      renderer.setPixelRatio(1);
+      setShadow(2048, 2);
+    } else {
+      renderer.setPixelRatio(Math.min(devicePixelRatio, 1) * 0.75);
+      setShadow(1024, 1);
+    }
+    renderer.setSize(innerWidth, innerHeight);
+  }
+  setQuality(level);
+
   addEventListener('resize', () => {
     renderer.setSize(innerWidth, innerHeight);
     camera.aspect = innerWidth / innerHeight;
@@ -86,7 +110,8 @@ export async function createRenderer(container, A, quality) {
 
   const backend = renderer.backend && renderer.backend.isWebGPUBackend ? 'WebGPU' : 'WebGL2';
   return {
-    renderer, scene, camera, sun, backend, SUN_OFFSET,
-    render() { if (post) post.render(); else renderer.render(scene, camera); },
+    renderer, scene, camera, sun, backend, SUN_OFFSET, setQuality,
+    get level() { return level; },
+    render() { if (post && level === 'high') post.render(); else renderer.render(scene, camera); },
   };
 }

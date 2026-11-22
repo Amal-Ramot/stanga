@@ -96,7 +96,10 @@ function tearPages() {
 async function boot() {
   tearPages();
   initInput();
-  quality = isTouchDevice() ? 'low' : (new URLSearchParams(location.search).get('q') || 'high');
+  // מתחילים ברמה בטוחה, ומשנים לפי המהירות בפועל (אלא אם נבחרה ידנית עם ?q=)
+  const forced = new URLSearchParams(location.search).get('q');
+  quality = forced || (isTouchDevice() ? 'low' : 'medium');
+  G.autoQuality = !forced;
   onProgress((p) => { $('load-bar').style.width = `${Math.round(p * 100)}%`; });
   try { await document.fonts.load('900 40px Rubik'); await document.fonts.load('400 40px "Secular One"'); } catch {}
   A = await loadAll();
@@ -135,6 +138,7 @@ async function boot() {
   }).catch(() => {});
   window.__ready = R.backend;
   window.__G = G;
+  window.__R = R;
 }
 
 function makeBall() {
@@ -218,6 +222,7 @@ function setupMenu() {
 }
 
 function toMenu() {
+  $('keys-hint').classList.add('hidden');
   TOUR.active = false;
   if (G.net) { G.net = null; endMatch('quit'); }
   G.state = 'menu';
@@ -247,7 +252,7 @@ function startMatch(opts) {
   $('hud').classList.remove('hidden');
   if (isTouchDevice()) $('touch').classList.remove('hidden');
   G.scores = [0, 0];
-  G.players[0].name = G.mode === 'ai' ? 'אתה (אבי)' : 'אבי';
+  G.players[0].name = G.mode === 'ai' ? 'אתה' : 'אבי';
   G.players[1].name = G.mode === 'ai' ? 'יניב כאפות' : 'יניב';
   G.players[0].speedMul = 1; G.players[1].speedMul = 1;
   G.ai = G.mode === 'ai' ? new AI(G, G.players[1], G.difficulty) : null;
@@ -257,6 +262,17 @@ function startMatch(opts) {
   updateScore();
   setPiece(G.players[0], 'פתיחה! אבי בועט מהאמצע');
   SFX.sfxWhistle(0.6);
+  showKeysHint();
+}
+
+// רמז מקשים קצר בתחילת משחק (רק במחשב)
+let keysHintTimer = null;
+function showKeysHint() {
+  if (isTouchDevice() || G.mode === '2p') return;
+  const el = $('keys-hint');
+  el.classList.remove('hidden', 'fade');
+  clearTimeout(keysHintTimer);
+  keysHintTimer = setTimeout(() => { el.classList.add('fade'); keysHintTimer = setTimeout(() => el.classList.add('hidden'), 600); }, 7000);
 }
 
 // ---------- סלנג של השכונה (שנות ה-90) ----------
@@ -341,11 +357,12 @@ function kidPaths(doors) {
 let PATHS = null;
 // ילדי השכונה – צופים מסביב למגרש
 function makeExtras() {
-  const n = quality === 'low' ? 4 : EXTRA_KIDS.length;
+  const n = isTouchDevice() ? 3 : EXTRA_KIDS.length;
   G.extras = EXTRA_KIDS.slice(0, n).map((o) => {
     const k = new Player(R.scene, { ...o, attackDir: 1, name: '' });
     k.ring.visible = false; k.arrow.visible = false;
     k.root.scale.setScalar(0.9 + Math.random() * 0.12);
+    k.root.traverse((o) => { if (o.isMesh) o.castShadow = false; }); // צופים בלי צל – חוסך הרבה
     return k;
   });
 }
@@ -613,6 +630,7 @@ function startNetMatch(role, opp) {
   $('target-lbl').textContent = 'אונליין · עד 11';
   G.scores = [0, 0]; updateScore();
   SFX.initAudio(); SFX.startAmbience();
+  showKeysHint();
   if (role === 'host') { setPiece(G.players[0], `פתיחה! ${G.players[0].name} בועט מהאמצע`); SFX.sfxWhistle(0.6); }
   else { G.state = 'setpiece'; G.kicker = G.players[0]; message('מתחבר למשחק...', 2000); }
 }
@@ -1028,8 +1046,24 @@ function updateTurnHud() {
 let last = performance.now();
 const STEP = 1 / 120;
 let acc = 0;
+// מדידת מהירות והתאמת גרפיקה אוטומטית
+const perf = { t0: 0, frames: 0, sum: 0, slow: 0, fast: 0, ups: 0 };
+function adaptQuality(frameMs, now) {
+  if (!G.autoQuality || document.hidden) return;
+  if (!perf.t0) perf.t0 = now;
+  perf.frames++; perf.sum += Math.min(frameMs, 200);
+  if (now - perf.t0 < 2000) return;
+  const avg = perf.sum / perf.frames;
+  perf.t0 = now; perf.frames = 0; perf.sum = 0;
+  const lv = R.level;
+  if (avg > 26) { perf.slow++; perf.fast = 0; } else if (avg < 13) { perf.fast++; perf.slow = 0; } else { perf.slow = 0; perf.fast = 0; }
+  if (perf.slow >= 1 && lv !== 'low') { R.setQuality(lv === 'high' ? 'medium' : 'low'); perf.slow = 0; perf.ups = 9; }
+  else if (perf.fast >= 2 && perf.ups < 1 && lv !== 'high') { R.setQuality(lv === 'low' ? 'medium' : 'high'); perf.fast = 0; perf.ups++; }
+}
+
 function loop() {
   const now = performance.now();
+  adaptQuality(now - last, now);
   let dt = Math.min(0.05, (now - last) / 1000);
   last = now;
   if (G.paused) { R.render(); endFrame(); return; }

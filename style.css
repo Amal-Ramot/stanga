@@ -565,3 +565,24 @@ button { font-family: inherit; cursor: pointer; }
 /* נעצים וסלוטייפ אמיתיים יותר */
 #intro .tape { background: linear-gradient(rgba(245, 238, 210, .72), rgba(225, 214, 175, .72)), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .4 0 0 0 0 .3 0 0 0 .28 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); box-shadow: 0 1px 2px rgba(0,0,0,.2); }
 #intro .scribble { color: rgba(25, 25, 35, .6); font-family: 'Playpen Sans Hebrew', 'Rubik', sans-serif; }
+
+/* טבלת שליטה ברורה */
+.keys-table { width: 100%; border-collapse: collapse; font-size: 15px; margin: 4px 0 8px; }
+.keys-table th { text-align: right; padding: 6px 4px; border-bottom: 2px solid var(--pen); color: var(--pen); font-weight: 800; font-size: 14px; }
+.keys-table td { padding: 7px 4px; border-bottom: 1px dashed rgba(31, 63, 156, .25); vertical-align: middle; }
+.keys-table td:first-child { font-weight: 700; }
+.keys-table small { font-weight: 400; color: #555; font-size: 12px; }
+kbd { display: inline-block; min-width: 26px; padding: 3px 7px; margin: 1px 2px; text-align: center; font: 700 13px/1.2 'Rubik', sans-serif !important; color: #222; background: linear-gradient(#fff, #e9e6dc); border: 1px solid #9a9488; border-bottom-width: 3px; border-radius: 5px; direction: ltr; }
+kbd.wide { min-width: 52px; }
+.keys-mobile { font-size: 14px; margin: 6px 0 0; }
+.rules .keys-table td { text-align: right; }
+/* רמז מקשים בתחילת משחק */
+#keys-hint { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 11; display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: center; max-width: calc(100% - 32px); padding: 8px 14px; background: rgba(253, 251, 242, .95); border: 2px solid #1f3f9c; border-radius: 8px; box-shadow: 0 6px 14px rgba(0,0,0,.3); font: 600 14px 'Rubik', sans-serif; color: #222; pointer-events: none; transition: opacity .5s; }
+#keys-hint.fade { opacity: 0; }
+
+#rules .panel { width: min(680px, 100%); }
+#rules .rules ul { font-size: 15px; }
+#rules .rules table:not(.keys-table) td { padding: 3px 4px; }
+.keys-table td:nth-child(2), .keys-table td:nth-child(3) { white-space: nowrap; }
+.keys-table th:nth-child(3) { white-space: normal; }
+@media (max-width: 560px) { .keys-table { font-size: 13px; } kbd { min-width: 20px; padding: 2px 5px; font-size: 11px !important; } }
