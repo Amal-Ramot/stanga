@@ -13,6 +13,7 @@ export function onProgress(cb) {
 }
 
 const PBR = ['worn_asphalt', 'white_rough_plaster', 'concrete_tiles', 'white_sandstone_bricks', 'dry_ground_01', 'rusty_metal_02', 'painted_metal_shutter'];
+export const KID_MODELS = ['Casual_Male', 'Casual2_Male', 'Casual3_Male', 'Casual_Female', 'Casual2_Female', 'Casual3_Female', 'Worker_Male', 'Casual_Bald'];
 const MODELS = ['covered_car', 'dirty_football', 'plastic_monobloc_chair_01', 'street_lamp_01', 'painted_wooden_bench'];
 
 // אספלט ומרצפות ישראליים הם אפורים – מורידים את הגוון החום מהצילום
@@ -43,7 +44,7 @@ function loadTex(url, srgb) {
 }
 
 export async function loadAll() {
-  const A = { pbr: {}, models: {}, hdri: null };
+  const A = { pbr: {}, models: {}, kids: {}, hdri: null };
   const jobs = [];
   for (const n of PBR) {
     jobs.push((async () => {
@@ -62,6 +63,19 @@ export async function loadAll() {
         A.models[n] = g.scene; res();
       }, undefined, () => res());
     }));
+  }
+  // דמויות ילדים מצוירות עם אנימציות (Quaternius, CC0) – GLB מקודד ב-JSON
+  for (const n of KID_MODELS) {
+    jobs.push((async () => {
+      try {
+        const j = await (await fetch(`assets/kids/${n}.json`)).json();
+        const bin = atob(j.glb); const buf = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+        const g = await new Promise((res, rej) => gltfLoader.parse(buf.buffer, '', res, rej));
+        g.scene.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; } });
+        A.kids[n] = { scene: g.scene, animations: g.animations };
+      } catch (e) { console.warn('kid', n, e); }
+    })());
   }
   // שמיים (HDR מקודד ב-JSON כדי שכל שרת יגיש אותו)
   jobs.push((async () => {

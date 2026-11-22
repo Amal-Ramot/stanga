@@ -108,7 +108,11 @@ async function boot() {
   W = buildWorld(R.scene, A);
   $('backend').textContent = R.backend;
 
-  G.players = [new Player(R.scene, KIDS.p1), new Player(R.scene, KIDS.p2)];
+  const km = (n) => A.kids && A.kids[n];
+  G.players = [
+    new Player(R.scene, { ...KIDS.p1, model: km('Casual_Male'), shirt: '#7fb2e0', pants: '#2f4a73', skin: '#e2b08a' }),
+    new Player(R.scene, { ...KIDS.p2, model: km('Casual2_Male'), shirt: '#e8e4da', pants: '#4a4d55', skin: '#c48e62' }),
+  ];
   makeExtras();
   placeExtrasAtSpots();
   makeBall();
@@ -359,7 +363,8 @@ let PATHS = null;
 function makeExtras() {
   const n = isTouchDevice() ? 3 : EXTRA_KIDS.length;
   G.extras = EXTRA_KIDS.slice(0, n).map((o) => {
-    const k = new Player(R.scene, { ...o, attackDir: 1, name: '' });
+    const models = ['Casual_Female', 'Casual3_Male', 'Casual2_Female', 'Worker_Male', 'Casual3_Female', 'Casual_Bald'];
+    const k = new Player(R.scene, { ...o, attackDir: 1, name: '', model: A.kids && A.kids[models[G.extrasMade = (G.extrasMade || 0) + 1, (G.extrasMade - 1) % models.length]], noShadow: true, height: 1.3 + Math.random() * 0.15 });
     k.ring.visible = false; k.arrow.visible = false;
     k.root.scale.setScalar(0.9 + Math.random() * 0.12);
     k.root.traverse((o) => { if (o.isMesh) o.castShadow = false; }); // צופים בלי צל – חוסך הרבה
@@ -1134,7 +1139,7 @@ function loop() {
     b.spin.rotateOnWorldAxis(axis, sp / BALL.r * dt);
   }
   animateWorld(W, G.time);
-  if (G.state === 'cinematic') cineCamera(G.cineT); else layoutCamera(false);
+  if (G.state === 'cinematic') cineCamera(G.cineT); else if (!window.__freeze) layoutCamera(false);
   if (G.state !== 'menu' && G.state !== 'cinematic') updateTurnHud();
   updateBubbles();
   R.render();

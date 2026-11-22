@@ -1,6 +1,7 @@
 // ילד מהשכונה שחזר הרגע מבית הספר – גוף מעוגל, מפרקים, בגדים מלוכלכים
 import * as THREE from 'three';
 import { PLAYER } from './config.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 
 const R = Math.random;
 function cnv(w, h, draw) {
@@ -233,7 +234,83 @@ export class Player {
     this.root.add(this.arrow);
 
     scene.add(this.root);
+    if (opts.model) this.useModel(opts);
     this.sync();
+  }
+
+  // דמות מצוירת עם שלד ואנימציות (Quaternius, CC0)
+  useModel(opts) {
+    const m = SkeletonUtils.clone(opts.model.scene);
+    const H = opts.height || 1.42;
+    m.scale.setScalar(H / 3.25);
+    const COL = { Skin: opts.skin, Shirt: opts.shirt, Pants: opts.pants, Hair: opts.hair };
+    m.traverse((o) => {
+      if (!o.isMesh) return;
+      const list = (Array.isArray(o.material) ? o.material : [o.material]).map((mt) => {
+        const c = mt.clone();
+        if (COL[mt.name]) c.color.set(COL[mt.name]);
+        c.roughness = 0.75; c.metalness = 0;
+        return c;
+      });
+      o.material = Array.isArray(o.material) ? list : list[0];
+      o.castShadow = opts.noShadow ? false : true;
+    });
+    this.body.visible = false;
+    this.root.add(m);
+    this.model = m;
+    this.mixer = new THREE.AnimationMixer(m);
+    const clip = (n) => opts.model.animations.find((a) => a.name.endsWith('|' + n));
+    const act = (n, once) => {
+      const c = clip(n); if (!c) return null;
+      const a = this.mixer.clipAction(c);
+      if (once) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; }
+      return a;
+    };
+    this.acts = { idle: act('Idle'), walk: act('Walk'), win: act('Victory', true), lose: act('Defeat', true) };
+    this.acts.idle.play(); this.acts.walk.play();
+    this.acts.walk.setEffectiveWeight(0);
+    this.mixer.update(Math.random() * 2);
+    const B = (n) => m.getObjectByName(n);
+    this.bones = { legR: B('UpperLegR'), kneeR: B('LowerLegR'), legL: B('UpperLegL'), kneeL: B('LowerLegL'), hips: B('Hips'), torso: B('Torso'), armR: B('UpperArmR'), armL: B('UpperArmL') };
+    this.emote = null;
+  }
+
+  updateModel(dt) {
+    const sp = Math.hypot(this.vel.x, this.vel.z);
+    const k = Math.min(1, sp / PLAYER.speed);
+    const A = this.acts;
+    if (!this.emote) {
+      const w = Math.min(1, sp / 0.6);
+      A.walk.setEffectiveWeight(w); A.idle.setEffectiveWeight(1 - w);
+      A.walk.timeScale = 1 + k * 1.9; // הליכה מהירה = ריצה מצחיקה
+    }
+    this.mixer.update(dt);
+    // תוספות על השלד: טעינה, בעיטות ומספרת
+    const b = this.bones;
+    this.model.position.y = 0; this.model.rotation.x = 0;
+    if (this.charge > 0 && b.legR) { b.legR.rotation.x += 0.8 * this.charge; b.kneeR.rotation.x -= 1.0 * this.charge; }
+    if (this.anim && b.legR) {
+      const a = this.anim;
+      const p = Math.min(1, a.t);
+      const sn = Math.sin(Math.PI * p);
+      if (a.type === 'kick' || a.type === 'whiff') { b.legR.rotation.x -= 1.5 * sn - 0.5 * (1 - p); b.kneeR.rotation.x += 0.4 * (1 - sn); }
+      else if (a.type === 'lob') { b.legR.rotation.x -= 1.9 * sn; b.torso.rotation.x -= 0.3 * sn; }
+      else if (a.type === 'heel') { b.legR.rotation.x += 0.7 * sn; b.kneeR.rotation.x -= 1.6 * sn; }
+      else if (a.type === 'head') { b.torso.rotation.x += 0.5 * sn; this.model.position.y = 0.25 * sn; }
+      else if (a.type === 'scissors') { this.model.rotation.x = -1.4 * sn; this.model.position.y = 0.7 * sn; b.legR.rotation.x -= 2.0 * sn; b.legL.rotation.x += 0.9 * sn; }
+    }
+  }
+
+  setEmote(kind) {
+    if (!this.acts) return;
+    const a = kind === 'cheer' ? this.acts.win : kind === 'sad' ? this.acts.lose : null;
+    if (!a) return;
+    for (const x of [this.acts.win, this.acts.lose]) if (x) x.stop();
+    a.reset(); a.setEffectiveWeight(1); a.play();
+    this.acts.idle.setEffectiveWeight(0); this.acts.walk.setEffectiveWeight(0);
+    this.emote = a;
+    clearTimeout(this.emoteT);
+    this.emoteT = setTimeout(() => { a.fadeOut(0.3); this.emote = null; }, 1800);
   }
 
   forward(out = new THREE.Vector3()) {
@@ -253,6 +330,7 @@ export class Player {
     this.animSeq = (this.animSeq || 0) + 1; this.animType = type;
     const dur = { kick: 0.34, lob: 0.38, heel: 0.36, scissors: 0.8, head: 0.32, whiff: 0.32, cheer: 1.4, sad: 1.2 }[type] || 0.3;
     this.anim = { type, t: 0, dur };
+    if (this.model && (type === 'cheer' || type === 'sad')) this.setEmote(type);
   }
 
   setTurn(state) {
@@ -334,6 +412,7 @@ export class Player {
     this.ring.scale.setScalar(1 + 0.05 * Math.sin(t * 6));
     this.arrow.position.z = 0.56 + this.charge * 0.5;
     this.arrow.scale.setScalar(1 + this.charge * 0.9);
+    if (this.model) this.updateModel(dt);
     this.sync();
   }
 
