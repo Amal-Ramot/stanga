@@ -222,7 +222,6 @@ function setupMenu() {
 }
 
 function toMenu() {
-  $('keys-hint').classList.add('hidden');
   TOUR.active = false;
   if (G.net) { G.net = null; endMatch('quit'); }
   G.state = 'menu';
@@ -262,18 +261,8 @@ function startMatch(opts) {
   updateScore();
   setPiece(G.players[0], 'פתיחה! אבי בועט מהאמצע');
   SFX.sfxWhistle(0.6);
-  showKeysHint();
 }
 
-// רמז מקשים קצר בתחילת משחק (רק במחשב)
-let keysHintTimer = null;
-function showKeysHint() {
-  if (isTouchDevice() || G.mode === '2p') return;
-  const el = $('keys-hint');
-  el.classList.remove('hidden', 'fade');
-  clearTimeout(keysHintTimer);
-  keysHintTimer = setTimeout(() => { el.classList.add('fade'); keysHintTimer = setTimeout(() => el.classList.add('hidden'), 600); }, 7000);
-}
 
 // ---------- סלנג של השכונה (שנות ה-90) ----------
 const SLANG = {
@@ -630,7 +619,6 @@ function startNetMatch(role, opp) {
   $('target-lbl').textContent = 'אונליין · עד 11';
   G.scores = [0, 0]; updateScore();
   SFX.initAudio(); SFX.startAmbience();
-  showKeysHint();
   if (role === 'host') { setPiece(G.players[0], `פתיחה! ${G.players[0].name} בועט מהאמצע`); SFX.sfxWhistle(0.6); }
   else { G.state = 'setpiece'; G.kicker = G.players[0]; message('מתחבר למשחק...', 2000); }
 }
