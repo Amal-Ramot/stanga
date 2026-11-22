@@ -304,7 +304,7 @@ export class Player {
     this.acts.walk.setEffectiveWeight(0);
     this.mixer.update(Math.random() * 2);
     const B = (n) => m.getObjectByName(n);
-    this.bones = { legR: B('UpperLegR'), kneeR: B('LowerLegR'), legL: B('UpperLegL'), kneeL: B('LowerLegL'), hips: B('Hips'), torso: B('Torso'), armR: B('UpperArmR'), armL: B('UpperArmL') };
+    this.bones = { legR: B('UpperLegR'), kneeR: B('LowerLegR'), legL: B('UpperLegL'), kneeL: B('LowerLegL'), hips: B('Hips'), torso: B('Torso'), armR: B('UpperArmR'), armL: B('UpperArmL'), footR: B('FootR'), footL: B('FootL') };
     // תנוחת המנוחה של כל עצם – משחזרים לפני כל פריים כדי שתוספות לא יצטברו
     this.boneRest = Object.values(this.bones).filter(Boolean).map((b) => [b, b.quaternion.clone(), b.position.clone()]);
     this.emote = null;
@@ -361,6 +361,18 @@ export class Player {
     }
     for (const [bn, q, p0] of this.boneRest) { bn.quaternion.copy(q); bn.position.copy(p0); }
     this.mixer.update(dt);
+    // כפות הרגליים בשלד הזה הן "יעדי IK" נפרדים – שומרים את מיקומן ביחס לשוק,
+    // ואחרי שמזיזים את הרגל מצמידים אותן בחזרה (אחרת הנעל נשארת על הרצפה והרגל נמתחת)
+    const procedural = !!(this.anim || this.charge > 0);
+    const feet = [];
+    if (procedural) {
+      this.model.updateMatrixWorld(true);
+      for (const [knee, foot] of [[this.bones.kneeR, this.bones.footR], [this.bones.kneeL, this.bones.footL]]) {
+        if (!knee || !foot) continue;
+        const kInv = new THREE.Matrix4().copy(knee.matrixWorld).invert();
+        feet.push([knee, foot, new THREE.Matrix4().multiplyMatrices(kInv, foot.matrixWorld)]);
+      }
+    }
     // תוספות על השלד: טעינה, בעיטות ומספרת
     const b = this.bones;
     this.model.position.y = 0; this.model.rotation.x = 0;
@@ -386,6 +398,15 @@ export class Player {
         b.legR.rotation.x -= 2.3 * s2; b.kneeR.rotation.x += 0.5 * (1 - s2) * sn;
         if (b.armL) b.armL.rotation.z += 1.1 * sn;
         if (b.armR) b.armR.rotation.z -= 1.1 * sn;
+      }
+    }
+    if (feet.length) {
+      this.model.updateMatrixWorld(true);
+      const tmp = new THREE.Matrix4(), pInv = new THREE.Matrix4();
+      for (const [knee, foot, rel] of feet) {
+        tmp.multiplyMatrices(knee.matrixWorld, rel);            // מיקום הכף הרצוי בעולם
+        pInv.copy(foot.parent.matrixWorld).invert();
+        tmp.premultiply(pInv).decompose(foot.position, foot.quaternion, new THREE.Vector3());
       }
     }
   }
