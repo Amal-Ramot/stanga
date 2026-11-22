@@ -114,6 +114,37 @@ function hairTexture(color) {
   });
 }
 
+// פרצוף מצויר לדמויות: עיניים גדולות, גבות, אף וחיוך
+function kidFaceTexture(o) {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 208;
+  const g = c.getContext('2d');
+  const W = 256, Hh = 208, cx = W / 2;
+  const eyeY = 88, eyeDX = 50;
+  // לחיים
+  g.fillStyle = 'rgba(230,110,100,.28)';
+  for (const s of [-1, 1]) { g.beginPath(); g.ellipse(cx + s * 70, 132, 20, 12, 0, 0, Math.PI * 2); g.fill(); }
+  for (const s of [-1, 1]) {
+    const x = cx + s * eyeDX;
+    g.fillStyle = '#fff'; g.beginPath(); g.ellipse(x, eyeY, 27, 32, 0, 0, Math.PI * 2); g.fill();
+    g.lineWidth = 3; g.strokeStyle = 'rgba(40,25,15,.55)'; g.stroke();
+    g.fillStyle = o.eyes || '#4a2e18'; g.beginPath(); g.arc(x + 3, eyeY + 5, 17, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#111'; g.beginPath(); g.arc(x + 3, eyeY + 5, 9, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#fff'; g.beginPath(); g.arc(x - 3, eyeY - 2, 6, 0, Math.PI * 2); g.fill();
+    // גבות
+    g.strokeStyle = o.hair || '#2a1a10'; g.lineWidth = 8; g.lineCap = 'round';
+    g.lineWidth = 10; g.beginPath(); g.moveTo(x - 24, eyeY - 44 + (s > 0 ? 3 : 0)); g.quadraticCurveTo(x, eyeY - 58, x + 24, eyeY - 46 - (s > 0 ? 0 : 4)); g.stroke();
+  }
+  // אף
+  g.strokeStyle = 'rgba(120,60,35,.55)'; g.lineWidth = 4;
+  g.beginPath(); g.moveTo(cx - 2, 112); g.quadraticCurveTo(cx - 10, 128, cx + 2, 130); g.stroke();
+  // פה – חיוך שובב
+  g.fillStyle = '#7a2a22';
+  g.beginPath(); g.moveTo(cx - 40, 146); g.quadraticCurveTo(cx, 196, cx + 42, 142); g.quadraticCurveTo(cx, 162, cx - 40, 146); g.fill();
+  g.fillStyle = '#fff'; g.beginPath(); g.moveTo(cx - 32, 149); g.quadraticCurveTo(cx, 161, cx + 34, 146); g.lineTo(cx + 29, 154); g.quadraticCurveTo(cx, 166, cx - 27, 156); g.fill();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return t;
+}
+
 function m(geo, mat) {
   const x = new THREE.Mesh(geo, mat);
   x.castShadow = true; x.receiveShadow = true;
@@ -242,8 +273,10 @@ export class Player {
   useModel(opts) {
     const m = SkeletonUtils.clone(opts.model.scene);
     const H = opts.height || 1.42;
+    m.updateMatrixWorld(true);
+    this.addFaceAndShoes(m, opts);
     m.scale.setScalar(H / 3.25);
-    const COL = { Skin: opts.skin, Shirt: opts.shirt, Pants: opts.pants, Hair: opts.hair };
+    const COL = { Skin: opts.skin, Face: opts.skin, Shirt: opts.shirt, Pants: opts.pants, Hair: opts.hair };
     m.traverse((o) => {
       if (!o.isMesh) return;
       const list = (Array.isArray(o.material) ? o.material : [o.material]).map((mt) => {
@@ -273,6 +306,46 @@ export class Player {
     const B = (n) => m.getObjectByName(n);
     this.bones = { legR: B('UpperLegR'), kneeR: B('LowerLegR'), legL: B('UpperLegL'), kneeL: B('LowerLegL'), hips: B('Hips'), torso: B('Torso'), armR: B('UpperArmR'), armL: B('UpperArmL') };
     this.emote = null;
+  }
+
+  // פרצוף מצויר ונעלי ספורט – מוצמדים לעצמות של הראש והרגליים
+  addFaceAndShoes(m, opts) {
+    const attach = (boneName, obj, worldPos) => {
+      const bone = m.getObjectByName(boneName);
+      if (!bone) return;
+      const inv = new THREE.Matrix4().copy(bone.matrixWorld).invert();
+      const world = new THREE.Matrix4().compose(worldPos, new THREE.Quaternion(), new THREE.Vector3(1, 1, 1));
+      new THREE.Matrix4().multiplyMatrices(inv, world).decompose(obj.position, obj.quaternion, obj.scale);
+      bone.add(obj);
+    };
+    // פרצוף: משטח מעוקל על חזית הראש
+    const geo = new THREE.PlaneGeometry(1.12, 0.92, 18, 14);
+    const pa = geo.attributes.position;
+    for (let i = 0; i < pa.count; i++) {
+      const x = pa.getX(i), y = pa.getY(i);
+      const z = 0.53 * Math.sqrt(Math.max(0, 1 - (x / 0.7) ** 2 - (y / 0.66) ** 2)) - 0.5;
+      pa.setZ(i, z + 0.025);
+    }
+    geo.computeVertexNormals();
+    const face = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: kidFaceTexture(opts), transparent: true, roughness: 0.8, depthWrite: false }));
+    face.renderOrder = 2;
+    attach('Head', face, new THREE.Vector3(0, 2.6, 0.5));
+    // נעליים
+    const shoeCol = opts.shoe || '#f2f2ee';
+    const upperM = new THREE.MeshStandardMaterial({ color: shoeCol, roughness: 0.6 });
+    const soleM = new THREE.MeshStandardMaterial({ color: '#3a3430', roughness: 0.9 });
+    const stripeM = new THREE.MeshStandardMaterial({ color: opts.shoeStripe || '#2f6fd0', roughness: 0.6 });
+    for (const [bn, sx] of [['FootL', 0.264], ['FootR', -0.264]]) {
+      const g = new THREE.Group();
+      const up = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.3, 4, 10), upperM);
+      up.rotation.x = Math.PI / 2; up.scale.set(1.05, 1, 0.85); up.position.set(0, 0.12, 0.08); g.add(up);
+      const sole = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.07, 0.62), soleM);
+      sole.position.set(0, 0.03, 0.08); g.add(sole);
+      const st = new THREE.Mesh(new THREE.BoxGeometry(0.345, 0.05, 0.3), stripeM);
+      st.position.set(0, 0.13, 0.06); g.add(st);
+      g.traverse((o) => { if (o.isMesh) o.castShadow = !opts.noShadow; });
+      attach(bn, g, new THREE.Vector3(sx, 0, 0));
+    }
   }
 
   updateModel(dt) {
