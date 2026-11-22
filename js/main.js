@@ -1149,5 +1149,10 @@ function loop() {
 addEventListener('resize', () => R && layoutCamera(true));
 boot().catch((e) => {
   console.error(e);
-  $('load-msg').textContent = 'שגיאה בטעינה: ' + e.message;
+  if (e && e.message === 'NO_3D') {
+    $('load-msg').innerHTML = 'הדפדפן במחשב הזה לא מצליח להפעיל גרפיקה תלת-ממדית.<br><small>מה אפשר לעשות: בכרום – הגדרות ← מערכת ← להפעיל "השתמש בהאצת חומרה כשאפשר" ולהפעיל מחדש את הדפדפן. אפשר גם לנסות דפדפן אחר (כרום, אדג׳ או פיירפוקס מעודכנים). במחשבי עבודה לפעמים מנהל הרשת חוסם את זה.</small>';
+  } else {
+    $('load-msg').textContent = 'משהו השתבש בטעינה. נסו לרענן את הדף (F5).';
+  }
+  console.error('load error', e && (e.cause || e));
 });

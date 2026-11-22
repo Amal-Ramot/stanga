@@ -4,9 +4,50 @@ import { pass, mrt, output, normalView, vec3, vec4, uv, smoothstep, float, satur
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 
+// בדיקה אם הדפדפן מסוגל בכלל לצייר תלת-ממד
+export function webglAvailable() {
+  try {
+    const c = document.createElement('canvas');
+    const gl = c.getContext('webgl2') || c.getContext('webgl');
+    if (gl) { const ext = gl.getExtension('WEBGL_lose_context'); if (ext) ext.loseContext(); } // לא להשאיר הקשר פתוח
+    return !!gl;
+  } catch { return false; }
+}
+
+// ניסיון ליצור רנדרר בכמה דרכים – ממהיר לבטוח
+async function makeRenderer() {
+  const attempts = [
+    { antialias: true, powerPreference: 'high-performance' },               // WebGPU, ואם אין – WebGL2
+    { antialias: false, forceWebGL: true },                                  // WebGL2 בלבד, בלי דרישות
+    { antialias: false, forceWebGL: true, powerPreference: 'low-power' },    // כרטיס מסך חלש / מובנה
+  ];
+  let lastErr;
+  for (const opts of attempts) {
+    let r;
+    try {
+      r = new THREE.WebGPURenderer(opts);
+      await r.init();
+      return r;
+    } catch (e) {
+      lastErr = e;
+      try { r && r.dispose(); } catch {}
+      try { r && r.domElement && r.domElement.remove(); } catch {}
+    }
+  }
+  const err = new Error('NO_3D');
+  err.cause = lastErr;
+  throw err;
+}
+
 export async function createRenderer(container, A, quality) {
-  const renderer = new THREE.WebGPURenderer({ antialias: true, powerPreference: 'high-performance' });
-  await renderer.init();
+  if (!webglAvailable() && !navigator.gpu) { const e = new Error('NO_3D'); throw e; }
+  const renderer = await makeRenderer();
+  renderer.domElement.addEventListener('webglcontextlost', (ev) => {
+    ev.preventDefault();
+    const m = document.getElementById('msg');
+    if (m) { m.textContent = 'הגרפיקה נעצרה (כרטיס המסך התאפס). מרעננים...'; m.classList.add('show'); }
+    setTimeout(() => location.reload(), 1500);
+  });
   renderer.setPixelRatio(1);
   renderer.setSize(innerWidth, innerHeight);
   renderer.shadowMap.enabled = true;
