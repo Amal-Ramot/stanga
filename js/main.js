@@ -116,6 +116,7 @@ async function boot() {
   makeExtras();
   placeExtrasAtSpots();
   makeBall();
+  makeAimLine();
   placeForMenu();
 
   // "חימום": מהדרים את כל החומרים ומעלים את כל הטקסטורות כבר במסך הטעינה,
@@ -734,6 +735,62 @@ function remoteIntent() {
 }
 
 // ---------- בעיטות ----------
+// כיוון הבעיטה (כולל סיוע כיוון עדין לעבר השער) – משמש גם לקו הכיוון
+function kickDir(p, type, bpos) {
+  const dir = p.forward();
+  if (type === 'heel' || type === 'scissors') dir.negate();
+  if (type === 'kick' || type === 'lob') {
+    const gx = p.attackDir * FIELD.goalX;
+    const tz = Math.max(-FIELD.postZ - 0.2, Math.min(FIELD.postZ + 0.2, bpos.z + dir.z / Math.max(0.1, Math.abs(dir.x)) * Math.abs(gx - bpos.x)));
+    const to = new THREE.Vector3(gx - bpos.x, 0, tz - bpos.z).normalize();
+    if (dir.dot(to) > Math.cos(0.45) && Math.sign(dir.x) === p.attackDir) dir.lerp(to, 0.35).normalize();
+  }
+  return dir;
+}
+
+// קו כיוון: מופיע בזמן שמחזיקים בעיטה/הרמה, מראה לאן ועד כמה רחוק הכדור יטוס
+const AIM = {};
+function makeAimLine() {
+  const c = document.createElement('canvas'); c.width = 64; c.height = 16;
+  const g = c.getContext('2d');
+  g.fillStyle = 'rgba(255,255,255,.95)'; g.fillRect(0, 3, 38, 10);
+  const tex = new THREE.CanvasTexture(c); tex.wrapS = THREE.RepeatWrapping; tex.colorSpace = THREE.SRGBColorSpace;
+  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0.9 });
+  const geo = new THREE.PlaneGeometry(1, 0.22); geo.translate(0.5, 0, 0); geo.rotateX(-Math.PI / 2);
+  AIM.line = new THREE.Mesh(geo, mat); AIM.line.renderOrder = 5; AIM.tex = tex; AIM.mat = mat;
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.22, 0.32, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#fff', transparent: true, depthWrite: false, opacity: 0.9 }));
+  ring.renderOrder = 5; AIM.ring = ring;
+  AIM.line.visible = AIM.ring.visible = false;
+  R.scene.add(AIM.line, AIM.ring);
+}
+function updateAimLine() {
+  if (!AIM.line) return;
+  let p = null;
+  for (const q of G.players) if (q.charging && q.charge > 0 && !q.isRemote) p = q;
+  const show = !!p && (G.state === 'play' || G.state === 'setpiece');
+  AIM.line.visible = AIM.ring.visible = show;
+  if (!show) return;
+  const b = G.ball.pos;
+  const power = 0.15 + 0.85 * p.charge;
+  const dir = kickDir(p, p.charging, b);
+  const { h, vy } = G.kickSpeeds(p.charging, power);
+  // מרחק משוער: הרמה – עד הנחיתה הראשונה; בעיטה – כמה מטרים קדימה לפי העוצמה
+  const len = p.charging === 'lob' ? Math.min(22, h * (2 * vy / BALL.gravity)) : Math.min(16, 2.5 + h * 0.55);
+  const near = Math.hypot(b.x - p.pos.x, b.z - p.pos.z) < PLAYER.reach + 0.6;
+  const from = near ? b : p.pos;
+  AIM.line.position.set(from.x, 0.05, from.z);
+  AIM.line.rotation.y = -Math.atan2(dir.z, dir.x);
+  AIM.line.scale.set(len, 1, 1);
+  AIM.tex.repeat.set(len / 0.55, 1);
+  AIM.tex.offset.x = -(performance.now() / 600) % 1; // פסים זזים קדימה
+  const col = p.charging === 'lob' ? '#ffd54f' : '#ffffff';
+  AIM.mat.color.set(col); AIM.ring.material.color.set(col);
+  AIM.mat.opacity = near ? 0.95 : 0.45; AIM.ring.material.opacity = near ? 0.95 : 0.45;
+  AIM.ring.position.set(from.x + dir.x * len, 0.05, from.z + dir.z * len);
+  AIM.ring.visible = p.charging === 'lob';
+}
+
+
 function doKick(p, type, power) {
   const b = G.ball;
   const okState = G.state === 'play' || (G.state === 'setpiece' && p === G.kicker);
@@ -749,16 +806,7 @@ function doKick(p, type, power) {
   if (G.state === 'setpiece') { G.state = 'play'; hideMessage(); }
   if (!registerTouch(p, type)) return;
 
-  const f = p.forward();
-  let dir = f.clone();
-  if (type === 'heel' || type === 'scissors') dir.negate();
-  if (type === 'kick' || type === 'lob') {
-    // סיוע כיוון עדין לעבר השער
-    const gx = p.attackDir * FIELD.goalX;
-    const tz = Math.max(-FIELD.postZ - 0.2, Math.min(FIELD.postZ + 0.2, b.pos.z + dir.z / Math.max(0.1, Math.abs(dir.x)) * Math.abs(gx - b.pos.x)));
-    const to = tmpV.set(gx - b.pos.x, 0, tz - b.pos.z).normalize();
-    if (dir.dot(to) > Math.cos(0.45) && Math.sign(dir.x) === p.attackDir) dir.lerp(to, 0.35).normalize();
-  }
+  const dir = kickDir(p, type, b.pos);
   const { h, vy } = G.kickSpeeds(type, power);
   const jitter = (Math.random() - 0.5) * 0.04;
   dir.applyAxisAngle(new THREE.Vector3(0, 1, 0), jitter);
@@ -1131,6 +1179,7 @@ function loop() {
   // עדכון גרפי
   for (const p of G.players) p.update(dt, G.time);
   updateExtras(dt);
+  updateAimLine();
   const b = G.ball;
   b.mesh.position.copy(b.pos);
   const sp = Math.hypot(b.vel.x, b.vel.z);
