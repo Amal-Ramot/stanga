@@ -855,6 +855,7 @@ function segCollide(b, ax, ay, az, bx, by, bz, rad, key, goalIdx) {
 
 function playerBallCollide(p) {
   const b = G.ball;
+  if (p.aimLock) return; // בזמן כיוון הילד לא דוחף את הכדור
   if (G.state === 'setpiece' || G.state === 'menu') return;
   if (p === G.kickerGrace && G.time - G.lastKickTime < PLAYER.grace) return;
   const top = b.pos.y + BALL.r, bot = b.pos.y - BALL.r;
@@ -1015,20 +1016,15 @@ function humanControl(p, mode, dt) {
   const canKickNow = G.state === 'play' || (G.state === 'setpiece' && p === G.kicker);
   if (held && canKickNow && b.y < 1 && (p.aimLock ? dBall < PLAYER.reach + 1.2 : dBall < PLAYER.reach + 0.35)) {
     if (!p.aimLock) { p.aimLock = true; p.fineAim = true; p.aimAngle = p.facing; }
-    // החיצים מסובבים את הכיוון לאט לעבר הכיוון שנלחץ
-    if (Math.hypot(w.wx, w.wz) > 0.2) {
-      const target = Math.atan2(w.wz, w.wx);
-      let d = target - p.aimAngle;
-      while (d > Math.PI) d -= Math.PI * 2;
-      while (d < -Math.PI) d += Math.PI * 2;
-      const step = 1.1 * dt; // רדיאנים לשנייה – כיוון עדין
-      p.aimAngle += Math.max(-step, Math.min(step, d));
-    }
-    // הילד מקיף את הכדור כך שהוא תמיד עומד מאחוריו
-    const tx = b.x - Math.cos(p.aimAngle) * 0.5, tz = b.z - Math.sin(p.aimAngle) * 0.5;
-    const ddx = tx - p.pos.x, ddz = tz - p.pos.z, dl = Math.hypot(ddx, ddz);
-    out.wx = dl > 0.03 ? (ddx / dl) * Math.min(1, dl / 0.4) : 0;
-    out.wz = dl > 0.03 ? (ddz / dl) * Math.min(1, dl / 0.4) : 0;
+    // ימינה/שמאלה מסובבים את הכיוון סביב הכדור – 360 מעלות, בעדינות
+    // (ימינה = עם כיוון השעון על המסך, שמאלה = נגד כיוון השעון)
+    p.aimAngle += it.x * 1.3 * dt;
+    // הילד מקיף את הכדור ועומד תמיד מאחוריו (מוצב ישירות, בלי לדחוף את הכדור)
+    const tx = b.x - Math.cos(p.aimAngle) * 0.55, tz = b.z - Math.sin(p.aimAngle) * 0.55;
+    const k = Math.min(1, dt * 14);
+    p.pos.x += (tx - p.pos.x) * k; p.pos.z += (tz - p.pos.z) * k;
+    p.vel.set(0, 0, 0);
+    out.wx = 0; out.wz = 0;
     out.face = p.aimAngle;
     out.lockFace = true;
   } else if (!held) {
