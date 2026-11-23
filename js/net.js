@@ -5,7 +5,7 @@ const $ = (id) => document.getElementById(id);
 export const NET = {
   room: null, myPeer: null, lobby: [], match: null, role: null, opp: null,
   remoteInput: { x: 0, z: 0, ch: 0, a: null }, lastSnap: null, onStart: null, onEvent: null, onEnd: null,
-  pendingInvite: null, outgoing: null, profile: null,
+  pendingInvite: null, outgoing: null, profile: null, seeking: false,
 };
 
 const clean = (s, m) => String(s || '').replace(/[<>]/g, '').trim().slice(0, m);
@@ -20,11 +20,14 @@ export async function initNet({ onStart, onEvent, onEnd }) {
     for (const p of ch.peers) if (p.isMe && p.sameTab) NET.myPeer = p.peer;
     NET.lobby = ch.peers.filter((p) => !p.isMe && p.presence && p.presence.open && p.kind === 'viewer');
     renderLobby();
+    autoMatch();
   }, () => {});
+  setInterval(autoMatch, 2000);
   room.on('invite', (m) => {
     if (!m.data || m.data.to !== NET.myPeer || NET.match) return;
     NET.pendingInvite = { from: m.peer, match: clean(m.data.match, 40), nick: clean(m.data.nick, 16), hood: clean(m.data.hood, 20) };
-    showInvite();
+    if (NET.seeking && m.data.auto) acceptInvite(); // שידוך אוטומטי – מתחילים מיד
+    else showInvite();
   });
   room.on('accept', (m) => {
     const o = NET.outgoing;
@@ -49,38 +52,63 @@ export async function initNet({ onStart, onEvent, onEnd }) {
 export function setOpen(profile, open) {
   if (!NET.room) return;
   NET.profile = profile;
-  NET.room.presence(open && profile ? { open: true, nick: profile.nick, hood: profile.hood, busy: !!NET.match } : { open: null, nick: null, hood: null, busy: null }).catch(() => {});
+  NET.room.presence(open && profile ? { open: true, nick: profile.nick, hood: profile.hood, busy: !!NET.match, seek: !!NET.seeking && !NET.match } : { open: null, nick: null, hood: null, busy: null, seek: null }).catch(() => {});
+}
+
+// חיפוש יריב אוטומטי: כל השחקנים שמחפשים ממוינים לפי מזהה, ומשודכים בזוגות.
+// מי שהמזהה שלו קטן יותר בזוג שולח את ההזמנה, והשני מקבל אותה אוטומטית.
+export function setSeeking(on) {
+  NET.seeking = !!on && !!NET.profile;
+  setOpen(NET.profile, !!NET.profile);
+  renderLobby();
+  autoMatch();
+}
+function autoMatch() {
+  if (!NET.seeking || NET.match || NET.outgoing || !NET.myPeer || !NET.profile) return;
+  const seekers = NET.lobby.filter((p) => p.presence.seek && !p.presence.busy).map((p) => p.peer);
+  const all = [...seekers, NET.myPeer].sort();
+  const i = all.indexOf(NET.myPeer);
+  const partner = all[i ^ 1];
+  if (!partner || NET.myPeer > partner) return; // רק הקטן מבין השניים מזמין
+  const p = NET.lobby.find((x) => x.peer === partner);
+  if (p) invite(p, true);
 }
 
 function renderLobby() {
   const box = $('lobby-list');
   if (!box) return;
   box.textContent = '';
-  const list = NET.lobby.filter((p) => !p.presence.busy);
   $('lobby').hidden = !NET.room || !NET.profile;
+  const st = document.createElement('div'); st.className = 'lobby-seek';
+  const seekers = NET.lobby.filter((p) => p.presence.seek && !p.presence.busy);
+  st.textContent = NET.match ? 'במשחק...' : NET.seeking
+    ? (seekers.length ? 'נמצא שחקן פנוי! מתחילים משחק...' : '🔎 מחפש שחקן פנוי... ברגע שעוד שחקן רשום ייכנס לטורניר, המשחק יתחיל לבד.')
+    : '';
+  box.appendChild(st);
+  const list = NET.lobby;
   if (!list.length) {
     const d = document.createElement('div'); d.className = 'lobby-empty';
-    d.textContent = 'אין כרגע שחקן רשום שמחובר. שלחו את הקישור לחברים מהשכונה, וכשהם יתחברו הם יופיעו כאן.';
+    d.textContent = 'אין כרגע עוד שחקנים מחוברים. שלחו את הקישור לחברים מהשכונה.';
     box.appendChild(d); return;
   }
   for (const p of list) {
     const row = document.createElement('div'); row.className = 'lobby-row';
     const name = document.createElement('span');
     name.textContent = `${clean(p.presence.nick, 16) || 'שחקן'}${p.presence.hood ? ' · ' + clean(p.presence.hood, 20) : ''}`;
-    const b = document.createElement('button'); b.type = 'button'; b.textContent = 'הזמן למשחק';
-    b.addEventListener('click', () => invite(p));
-    row.append(name, b); box.appendChild(row);
+    const tag = document.createElement('small');
+    tag.textContent = p.presence.busy ? 'במשחק' : p.presence.seek ? 'מחפש משחק' : 'מחובר';
+    row.append(name, tag); box.appendChild(row);
   }
 }
 
-async function invite(p) {
+async function invite(p, auto) {
   if (!NET.profile || NET.match) return;
   const match = 'm-' + Math.random().toString(36).slice(2, 10);
   NET.outgoing = { to: p.peer, match };
-  showWaiting(`מחכה ש${clean(p.presence.nick, 16) || 'השחקן'} יענה...`);
-  try { await NET.room.emit('invite', { to: p.peer, match, nick: NET.profile.nick, hood: NET.profile.hood }); }
+  if (!auto) showWaiting(`מחכה ש${clean(p.presence.nick, 16) || 'השחקן'} יענה...`);
+  try { await NET.room.emit('invite', { to: p.peer, match, nick: NET.profile.nick, hood: NET.profile.hood, auto: !!auto }); }
   catch (e) { NET.outgoing = null; hideWaiting(e && e.code === 'not_permitted' ? 'אין לך הרשאה להזמין (צריך Contributor).' : 'ההזמנה לא נשלחה.'); }
-  setTimeout(() => { if (NET.outgoing && NET.outgoing.match === match) { NET.outgoing = null; hideWaiting('אין תשובה. נסו שוב.'); } }, 30000);
+  setTimeout(() => { if (NET.outgoing && NET.outgoing.match === match) { NET.outgoing = null; hideWaiting(auto ? '' : 'אין תשובה. נסו שוב.'); } }, auto ? 8000 : 30000);
 }
 
 function showInvite() {
@@ -145,7 +173,7 @@ export function sendEvent(e) {
 export async function endMatch(reason) {
   const m = NET.match;
   if (!m) return;
-  NET.match = null; NET.role = null;
+  NET.match = null; NET.role = null; NET.seeking = false;
   try { await m.leave(); } catch {}
   setOpen(NET.profile, !!NET.profile);
   if (NET.onEnd) NET.onEnd(reason);

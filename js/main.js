@@ -10,7 +10,7 @@ import { initInput, readIntent, endFrame, isTouchDevice, consumeEdge } from './i
 import { createRenderer } from './render.js';
 import * as SFX from './audio.js';
 import { initTournament, recordResult, T as TOUR, LEVEL_NAME } from './tournament.js';
-import { NET, initNet, setOpen, sendSnapshot, sendInput, sendEvent, endMatch } from './net.js';
+import { NET, initNet, setOpen, setSeeking, sendSnapshot, sendInput, sendEvent, endMatch } from './net.js';
 
 const $ = (id) => document.getElementById(id);
 const tmpV = new THREE.Vector3();
@@ -140,6 +140,8 @@ async function boot() {
     if (!ok) return;
     // שחקן רשום מופיע בלובי של המחוברים
     setInterval(() => { if (TOUR.me && !NET.profile) setOpen(TOUR.me, true); }, 1500);
+    // פתיחת חלון הטורניר = מחפשים יריב אוטומטית; סגירה = מפסיקים לחפש
+    TOUR.onOpen = (open) => { if (TOUR.me) { if (!NET.profile) setOpen(TOUR.me, true); setSeeking(open); } };
   }).catch(() => {});
   window.__ready = R.backend;
   window.__G = G;

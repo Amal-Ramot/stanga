@@ -86,7 +86,8 @@ function render() {
     renderStatus(`${T.rows.length} שחקנים בטבלה. הירשמו כדי להצטרף.`);
   } else {
     reg.hidden = true; play.hidden = false;
-    renderStatus(`${T.me.nick}, אתה במקום ${rk.rank} מתוך ${rk.of} · ${T.me.pts} נקודות. בחרו יריב מהמחוברים למטה.`);
+    renderStatus(`${T.me.nick}, אתה במקום ${rk.rank} מתוך ${rk.of} · ${T.me.pts} נקודות.`);
+    if (T.onOpen && !$('tour').classList.contains('hidden')) T.onOpen(true);
   }
 }
 
@@ -125,8 +126,8 @@ export async function recordResult(won, gf, ga) {
 }
 
 function setupUI() {
-  $('btn-tour').addEventListener('click', () => { $('tour').classList.remove('hidden'); render(); });
-  $('tour-close').addEventListener('click', () => $('tour').classList.add('hidden'));
+  $('btn-tour').addEventListener('click', () => { $('tour').classList.remove('hidden'); render(); if (T.onOpen) T.onOpen(true); });
+  $('tour-close').addEventListener('click', () => { $('tour').classList.add('hidden'); if (T.onOpen) T.onOpen(false); });
   $('tour-reg').addEventListener('submit', register);
   document.querySelectorAll('[data-tlevel]').forEach((b) => b.addEventListener('click', () => {
     document.querySelectorAll('[data-tlevel]').forEach((x) => x.classList.remove('on'));
