@@ -739,7 +739,7 @@ function remoteIntent() {
 function kickDir(p, type, bpos) {
   const dir = p.forward();
   if (type === 'heel' || type === 'scissors') dir.negate();
-  if (type === 'kick' || type === 'lob') {
+  if ((type === 'kick' || type === 'lob') && !p.fineAim) { // בכיוון עדין – בלי סיוע, הכדור הולך בדיוק לאן שכיוונו
     const gx = p.attackDir * FIELD.goalX;
     const tz = Math.max(-FIELD.postZ - 0.2, Math.min(FIELD.postZ + 0.2, bpos.z + dir.z / Math.max(0.1, Math.abs(dir.x)) * Math.abs(gx - bpos.x)));
     const to = new THREE.Vector3(gx - bpos.x, 0, tz - bpos.z).normalize();
@@ -971,6 +971,7 @@ function stepPlayer(p, intent, dt) {
   let target = null;
   if (intent.face != null) target = intent.face;
   else if (Math.hypot(wx, wz) > 0.15) target = Math.atan2(wz, wx);
+  if (intent.lockFace && intent.face != null) { p.facing = intent.face; target = null; }
   if (target != null) {
     let d = target - p.facing;
     while (d > Math.PI) d -= Math.PI * 2;
@@ -1008,8 +1009,33 @@ function humanControl(p, mode, dt) {
   const out = { wx: w.wx, wz: w.wz, face: null };
   if (G.state === 'goal' || G.state === 'over') { out.wx *= 0.5; out.wz *= 0.5; }
   const held = it.kick ? 'kick' : it.lob ? 'lob' : null;
+  // נעילה ליד הכדור: כשמחזיקים בעיטה קרוב לכדור, הילד נעמד מאחוריו ומכוונים בעדינות
+  const b = G.ball.pos;
+  const dBall = Math.hypot(b.x - p.pos.x, b.z - p.pos.z);
+  const canKickNow = G.state === 'play' || (G.state === 'setpiece' && p === G.kicker);
+  if (held && canKickNow && b.y < 1 && (p.aimLock ? dBall < PLAYER.reach + 1.2 : dBall < PLAYER.reach + 0.35)) {
+    if (!p.aimLock) { p.aimLock = true; p.fineAim = true; p.aimAngle = p.facing; }
+    // החיצים מסובבים את הכיוון לאט לעבר הכיוון שנלחץ
+    if (Math.hypot(w.wx, w.wz) > 0.2) {
+      const target = Math.atan2(w.wz, w.wx);
+      let d = target - p.aimAngle;
+      while (d > Math.PI) d -= Math.PI * 2;
+      while (d < -Math.PI) d += Math.PI * 2;
+      const step = 1.1 * dt; // רדיאנים לשנייה – כיוון עדין
+      p.aimAngle += Math.max(-step, Math.min(step, d));
+    }
+    // הילד מקיף את הכדור כך שהוא תמיד עומד מאחוריו
+    const tx = b.x - Math.cos(p.aimAngle) * 0.5, tz = b.z - Math.sin(p.aimAngle) * 0.5;
+    const ddx = tx - p.pos.x, ddz = tz - p.pos.z, dl = Math.hypot(ddx, ddz);
+    out.wx = dl > 0.03 ? (ddx / dl) * Math.min(1, dl / 0.4) : 0;
+    out.wz = dl > 0.03 ? (ddz / dl) * Math.min(1, dl / 0.4) : 0;
+    out.face = p.aimAngle;
+    out.lockFace = true;
+  } else if (!held) {
+    p.aimLock = false;
+  }
   if (held) { p.charging = held; p.charge = Math.min(1, p.charge + dt / 0.7); }
-  else if (p.charging) { doKick(p, p.charging, 0.15 + 0.85 * p.charge); p.charging = null; p.charge = 0; }
+  else if (p.charging) { doKick(p, p.charging, 0.15 + 0.85 * p.charge); p.charging = null; p.charge = 0; p.aimLock = false; p.fineAim = false; }
   if (it.heel) doKick(p, 'heel', 0.7);
   if (it.scissors) doKick(p, 'scissors', 1);
   return out;
