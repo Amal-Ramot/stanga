@@ -191,6 +191,8 @@ function setupMenu() {
   }
   $('btn-start').addEventListener('click', () => { goFullscreen(); startMatch(); });
   $('btn-full').addEventListener('click', toggleFullscreen);
+  $('btn-menu-hud').addEventListener('click', (e) => { e.stopPropagation(); $('hud-menu').hidden = !$('hud-menu').hidden; });
+  document.addEventListener('pointerdown', (e) => { if (!e.target.closest || !e.target.closest('.hud-btns')) $('hud-menu').hidden = true; });
   $('btn-rules').addEventListener('click', () => $('rules').classList.remove('hidden'));
   $('rules-close').addEventListener('click', () => $('rules').classList.add('hidden'));
   $('btn-again').addEventListener('click', () => {
@@ -1033,7 +1035,7 @@ function humanControl(p, mode, dt) {
     p.aimLock = false;
   }
   if (held) { p.charging = held; p.charge = Math.min(1, p.charge + dt / 0.7); }
-  else if (p.charging) { doKick(p, p.charging, 0.15 + 0.85 * p.charge); p.charging = null; p.charge = 0; p.aimLock = false; p.fineAim = false; }
+  else if (p.charging) { doKick(p, p.charging, 0.4 + 0.6 * p.charge); p.charging = null; p.charge = 0; p.aimLock = false; p.fineAim = false; }
   if (it.heel) doKick(p, 'heel', 0.7);
   if (it.scissors) doKick(p, 'scissors', 1);
   return out;
@@ -1050,12 +1052,12 @@ function layoutCamera(snap) {
   const tilt = THREE.MathUtils.degToRad(low ? (portrait ? 40 : 27) : (portrait ? 58 : 50));
   const vt = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2));
   const aspect = innerWidth / innerHeight;
-  const hw = portrait ? 7 : 10, hd = (portrait ? 10.5 : 7) * (low ? 0.78 : 1);
+  const hw = portrait ? 7 : 10, hd = (portrait ? 11 : 7.6) * (low ? 0.78 : 1);
   const dist = Math.max(hw / (vt * aspect), hd * Math.sin(tilt) / vt) * 1.05;
   const b = G.ball ? G.ball.pos : new THREE.Vector3();
   const focus = G.state === 'menu' ? new THREE.Vector3(0, 0, 0.5) : new THREE.Vector3(
     THREE.MathUtils.clamp(b.x * 0.85, portrait ? -8 : -8.5, portrait ? 8 : 8.5), 0,
-    THREE.MathUtils.clamp(b.z * 0.7, portrait ? -4.5 : -4, portrait ? 4.5 : 3.5) + (low && !portrait ? 0.8 : 0));
+    THREE.MathUtils.clamp(b.z * 0.7, portrait ? -4.5 : -4, portrait ? 4.5 : 3.5) + (low && !portrait ? 0.8 : 0) - (portrait ? 0 : 0.9));
   if (snap) camTarget.copy(focus); else camTarget.lerp(focus, 0.06);
   const off = portrait
     ? new THREE.Vector3(-Math.cos(tilt), Math.sin(tilt), 0).multiplyScalar(dist)
@@ -1071,6 +1073,53 @@ function layoutCamera(snap) {
   R.sun.position.set(camTarget.x + R.SUN_OFFSET.x, R.SUN_OFFSET.y, camTarget.z + R.SUN_OFFSET.z);
 }
 function shake(a) { G.shake = Math.max(G.shake || 0, a); }
+
+// ---------- מפה קטנה וסימון "אתה" ----------
+let mmFrame = 0;
+function drawMinimap() {
+  const cv = $('minimap');
+  if (!cv || G.state === 'menu' || G.state === 'cinematic' || $('hud').classList.contains('hidden')) return;
+  if ((mmFrame++ & 1) === 1) return; // כל פריים שני מספיק
+  const g = cv.getContext('2d');
+  const W = cv.width, H = cv.height, pad = 6;
+  const sx = (x) => pad + (x + FIELD.boundX) / (FIELD.boundX * 2) * (W - pad * 2);
+  const sz = (z) => pad + (z + FIELD.boundZ) / (FIELD.boundZ * 2) * (H - pad * 2);
+  g.clearRect(0, 0, W, H);
+  g.fillStyle = 'rgba(70,72,78,.82)'; g.fillRect(0, 0, W, H);
+  g.strokeStyle = 'rgba(255,255,255,.75)'; g.lineWidth = 1.5;
+  g.strokeRect(sx(-FIELD.asphaltX), sz(-FIELD.asphaltZ), sx(FIELD.asphaltX) - sx(-FIELD.asphaltX), sz(FIELD.asphaltZ) - sz(-FIELD.asphaltZ));
+  g.beginPath(); g.moveTo(sx(0), sz(-FIELD.asphaltZ)); g.lineTo(sx(0), sz(FIELD.asphaltZ)); g.stroke();
+  g.beginPath(); g.arc(sx(0), sz(0), (sx(1.6) - sx(0)), 0, Math.PI * 2); g.stroke();
+  // שערים
+  g.lineWidth = 4;
+  for (const s of [-1, 1]) { g.strokeStyle = s < 0 ? '#7fb2e0' : '#ff8a80'; g.beginPath(); g.moveTo(sx(s * FIELD.goalX), sz(-FIELD.postZ)); g.lineTo(sx(s * FIELD.goalX), sz(FIELD.postZ)); g.stroke(); }
+  // ילדים
+  const me = G.net && G.net.role === 'guest' ? G.players[1] : G.players[0];
+  G.players.forEach((p, i) => {
+    const x = sx(p.pos.x), y = sz(p.pos.z);
+    g.fillStyle = i === 0 ? '#3f8ee8' : '#e8553f';
+    g.beginPath(); g.arc(x, y, p === me ? 5.5 : 4.5, 0, Math.PI * 2); g.fill();
+    if (p === me) { g.strokeStyle = '#fff'; g.lineWidth = 2; g.stroke(); }
+    // כיוון המבט
+    g.strokeStyle = g.fillStyle; g.lineWidth = 2;
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(p.facing) * 9, y + Math.sin(p.facing) * 9); g.stroke();
+  });
+  // כדור
+  const b = G.ball.pos;
+  g.fillStyle = '#fff'; g.strokeStyle = '#111'; g.lineWidth = 1.2;
+  g.beginPath(); g.arc(sx(b.x), sz(b.z), 3.2 + Math.min(3, b.y), 0, Math.PI * 2); g.fill(); g.stroke();
+}
+function updateMeTag() {
+  const el = $('me-tag');
+  const show = G.state !== 'menu' && G.state !== 'cinematic' && G.mode !== '2p' && !$('hud').classList.contains('hidden');
+  el.classList.toggle('hidden', !show);
+  if (!show) return;
+  const me = G.net && G.net.role === 'guest' ? G.players[1] : G.players[0];
+  const v = me.pos.clone(); v.y = 2.05;
+  v.project(R.camera);
+  el.style.left = `${(v.x * 0.5 + 0.5) * innerWidth}px`;
+  el.style.top = `${(-v.y * 0.5 + 0.5) * innerHeight}px`;
+}
 
 // ---------- HUD ----------
 function updateScore(bump) {
@@ -1204,6 +1253,8 @@ function loop() {
   for (const p of G.players) p.update(dt, G.time);
   updateExtras(dt);
   updateAimLine();
+  drawMinimap();
+  updateMeTag();
   const b = G.ball;
   b.mesh.position.copy(b.pos);
   const sp = Math.hypot(b.vel.x, b.vel.z);

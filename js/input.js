@@ -70,30 +70,41 @@ export function endFrame() {
 }
 
 function setupTouch() {
+  const zone = document.getElementById('joy-zone');
   const pad = document.getElementById('joy');
   const knob = document.getElementById('joy-knob');
-  if (!pad) return;
+  if (!zone) return;
   let id = null, cx = 0, cy = 0;
-  const R = 55;
+  const R = 58, DEAD = 0.14;
   const move = (e) => {
     const dx = e.clientX - cx, dy = e.clientY - cy;
     const l = Math.hypot(dx, dy), k = l > R ? R / l : 1;
     knob.style.transform = `translate(${dx * k}px, ${dy * k}px)`;
-    touch.x = (dx * k) / R; touch.y = -(dy * k) / R;
+    // אזור מת קטן ועקומה רכה – שליטה עדינה בתנועות קטנות
+    let m = Math.min(1, l / R);
+    m = m < DEAD ? 0 : (m - DEAD) / (1 - DEAD);
+    m = m * m * (3 - 2 * m) * 0.35 + m * 0.65;
+    const ang = Math.atan2(dy, dx);
+    touch.x = Math.cos(ang) * m; touch.y = -Math.sin(ang) * m;
   };
-  pad.addEventListener('pointerdown', (e) => {
+  zone.addEventListener('pointerdown', (e) => {
+    if (id !== null) return;
     id = e.pointerId; touch.active = true;
-    const r = pad.getBoundingClientRect();
-    cx = r.left + r.width / 2; cy = r.top + r.height / 2;
-    pad.setPointerCapture(id); move(e); e.preventDefault();
+    // הג'ויסטיק מופיע בדיוק איפה שהאצבע נגעה
+    const zr = zone.getBoundingClientRect();
+    cx = e.clientX; cy = e.clientY;
+    pad.style.left = `${cx - zr.left - pad.offsetWidth / 2}px`;
+    pad.style.bottom = `${zr.bottom - cy - pad.offsetHeight / 2}px`;
+    pad.classList.add('active'); zone.classList.add('used');
+    zone.setPointerCapture(id); move(e); e.preventDefault();
   });
-  pad.addEventListener('pointermove', (e) => { if (e.pointerId === id) move(e); });
+  zone.addEventListener('pointermove', (e) => { if (e.pointerId === id) move(e); });
   const end = (e) => {
     if (e.pointerId !== id) return;
-    id = null; touch.x = touch.y = 0; knob.style.transform = '';
+    id = null; touch.x = touch.y = 0; knob.style.transform = ''; pad.classList.remove('active');
   };
-  pad.addEventListener('pointerup', end);
-  pad.addEventListener('pointercancel', end);
+  zone.addEventListener('pointerup', end);
+  zone.addEventListener('pointercancel', end);
 
   const hold = (elId, key) => {
     const b = document.getElementById(elId);

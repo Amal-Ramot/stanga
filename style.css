@@ -588,3 +588,36 @@ kbd.wide { min-width: 52px; }
 @media (max-width: 560px) { .keys-table { font-size: 13px; } kbd { min-width: 20px; padding: 2px 5px; font-size: 11px !important; } }
 .lobby-seek { font-weight: 800; color: #1f3f9c; padding: 6px 2px 8px; }
 .lobby-row small { flex: none; font-size: 12px; color: #666; }
+
+/* ===== HUD קומפקטי שלא מסתיר את המגרש ===== */
+#hud .board { border-width: 2px; box-shadow: 3px 3px 0 rgba(0,0,0,.5); opacity: .92; }
+#hud .board .side { padding: 2px 10px; font-size: 13px; gap: 8px; }
+#hud .board b { font-size: 24px; min-width: 26px; line-height: 1.1; }
+#hud .board .mid { font-size: 11px; padding: 0 8px; }
+#hud #turn { margin-top: 4px; font-size: 12px; padding: 2px 10px; }
+.hud-btns { gap: 0; flex-direction: column; align-items: flex-start; }
+.hud-btns > button { width: 34px; height: 34px; font-size: 17px; border-width: 2px; box-shadow: 2px 2px 0 var(--ink); opacity: .9; }
+#hud-menu { margin-top: 6px; display: flex; flex-direction: column; gap: 4px; background: var(--cream); border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); padding: 6px; }
+#hud-menu button { width: auto; height: auto; padding: 6px 10px; font: 700 14px 'Rubik', sans-serif; text-align: right; background: transparent; border: none; box-shadow: none; white-space: nowrap; }
+#hud-menu button:hover { background: rgba(0,0,0,.06); }
+#hud-menu button.off { opacity: .45; }
+/* מפה קטנה */
+#minimap { position: fixed; z-index: 10; right: max(10px, env(safe-area-inset-right)); bottom: max(10px, env(safe-area-inset-bottom)); width: 170px; height: 105px; border: 2px solid rgba(26,15,46,.85); border-radius: 4px; box-shadow: 2px 2px 0 rgba(0,0,0,.4); pointer-events: none; }
+#hud.hidden ~ #minimap, #minimap.hidden { display: none; }
+@media (pointer: coarse), (max-width: 760px) { #minimap { top: calc(max(8px, env(safe-area-inset-top)) + 62px); bottom: auto; right: max(8px, env(safe-area-inset-right)); width: 120px; height: 74px; } }
+/* סימון "אתה" מעל הילד */
+#me-tag { position: fixed; z-index: 9; left: 0; top: 0; transform: translate(-50%, -100%); pointer-events: none; font: 900 12px 'Rubik', sans-serif; color: #fff; background: #2f7de0; padding: 1px 7px 2px; border-radius: 9px; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,.4); white-space: nowrap; animation: meBob 1s ease-in-out infinite; }
+#me-tag i { position: absolute; left: 50%; bottom: -8px; margin-left: -6px; border: 6px solid transparent; border-top-color: #fff; }
+@keyframes meBob { 50% { margin-top: -4px; } }
+/* ג'ויסטיק צף: נוגעים בכל מקום בצד שמאל */
+#joy-zone { position: absolute; left: 0; bottom: 0; width: 50%; height: 100%; pointer-events: auto; touch-action: none; }
+#joy { left: max(30px, env(safe-area-inset-left)); bottom: max(34px, env(safe-area-inset-bottom)); pointer-events: none; opacity: .55; transition: opacity .15s; }
+#joy.active { opacity: 1; transition: none; }
+#joy-hint { position: absolute; left: max(22px, env(safe-area-inset-left)); bottom: 6px; font: 700 11px 'Rubik', sans-serif; color: rgba(255,255,255,.85); text-shadow: 0 1px 2px #000; }
+#joy-zone.used #joy-hint { display: none; }
+/* כפתורי מגע קטנים ושקופים יותר – פחות מסתירים את המגרש */
+.tbtns { grid-template-columns: 60px 60px; gap: 8px; }
+.tbtns button { width: 60px; height: 60px; font-size: 13px; opacity: .82; border-width: 2px; box-shadow: 2px 2px 0 var(--ink); }
+#b-kick { width: 70px; height: 70px; }
+#joy { width: 120px; height: 120px; }
+#joy-knob { width: 52px; height: 52px; margin: -26px; }

@@ -234,11 +234,15 @@
   </div>
   <div id="turn"></div>
   <div class="hud-btns">
-    <button id="btn-full" title="מסך מלא">⛶</button>
-    <button id="btn-music" title="מוזיקה">📻</button>
-    <button id="btn-sound" title="צליל">🔊</button>
-    <button id="btn-pause" title="השהיה">⏸</button>
+    <button id="btn-menu-hud" title="תפריט">☰</button>
+    <div id="hud-menu" hidden>
+      <button id="btn-pause" title="השהיה">⏸ השהיה</button>
+      <button id="btn-full" title="מסך מלא">⛶ מסך מלא</button>
+      <button id="btn-music" title="מוזיקה">📻 מוזיקה</button>
+      <button id="btn-sound" title="צליל">🔊 צליל</button>
+    </div>
   </div>
+  <canvas id="minimap" width="200" height="124" aria-label="מפת המגרש"></canvas>
 </div>
 <div id="pop"><div class="t"></div><div class="s"></div></div>
 <div id="msg"></div>
@@ -265,8 +269,9 @@
 </div>
 
 <!-- שליטה במגע -->
+<div id="me-tag" class="hidden">אתה<i></i></div>
 <div id="touch" class="hidden">
-  <div id="joy"><div id="joy-knob"></div></div>
+  <div id="joy-zone"><div id="joy"><div id="joy-knob"></div></div><span id="joy-hint">גררו כאן כדי לרוץ</span></div>
   <div class="tbtns">
     <button id="b-kick">בעיטה</button>
     <button id="b-lob">הרמה</button>
