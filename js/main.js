@@ -1074,51 +1074,25 @@ function layoutCamera(snap) {
 }
 function shake(a) { G.shake = Math.max(G.shake || 0, a); }
 
-// ---------- מפה קטנה וסימון "אתה" ----------
-let mmFrame = 0;
-function drawMinimap() {
-  const cv = $('minimap');
-  if (!cv || G.state === 'menu' || G.state === 'cinematic' || $('hud').classList.contains('hidden')) return;
-  if ((mmFrame++ & 1) === 1) return; // כל פריים שני מספיק
-  const g = cv.getContext('2d');
-  const W = cv.width, H = cv.height, pad = 6;
-  const sx = (x) => pad + (x + FIELD.boundX) / (FIELD.boundX * 2) * (W - pad * 2);
-  const sz = (z) => pad + (z + FIELD.boundZ) / (FIELD.boundZ * 2) * (H - pad * 2);
-  g.clearRect(0, 0, W, H);
-  g.fillStyle = 'rgba(70,72,78,.82)'; g.fillRect(0, 0, W, H);
-  g.strokeStyle = 'rgba(255,255,255,.75)'; g.lineWidth = 1.5;
-  g.strokeRect(sx(-FIELD.asphaltX), sz(-FIELD.asphaltZ), sx(FIELD.asphaltX) - sx(-FIELD.asphaltX), sz(FIELD.asphaltZ) - sz(-FIELD.asphaltZ));
-  g.beginPath(); g.moveTo(sx(0), sz(-FIELD.asphaltZ)); g.lineTo(sx(0), sz(FIELD.asphaltZ)); g.stroke();
-  g.beginPath(); g.arc(sx(0), sz(0), (sx(1.6) - sx(0)), 0, Math.PI * 2); g.stroke();
-  // שערים
-  g.lineWidth = 4;
-  for (const s of [-1, 1]) { g.strokeStyle = s < 0 ? '#7fb2e0' : '#ff8a80'; g.beginPath(); g.moveTo(sx(s * FIELD.goalX), sz(-FIELD.postZ)); g.lineTo(sx(s * FIELD.goalX), sz(FIELD.postZ)); g.stroke(); }
-  // ילדים
+// ---------- חץ כיוון כשהילד שלך מחוץ למסך ----------
+function updateMeArrow() {
+  const el = $('me-arrow');
+  const playing = G.state !== 'menu' && G.state !== 'cinematic' && G.mode !== '2p' && !$('hud').classList.contains('hidden');
+  if (!playing) { el.classList.add('hidden'); return; }
   const me = G.net && G.net.role === 'guest' ? G.players[1] : G.players[0];
-  G.players.forEach((p, i) => {
-    const x = sx(p.pos.x), y = sz(p.pos.z);
-    g.fillStyle = i === 0 ? '#3f8ee8' : '#e8553f';
-    g.beginPath(); g.arc(x, y, p === me ? 5.5 : 4.5, 0, Math.PI * 2); g.fill();
-    if (p === me) { g.strokeStyle = '#fff'; g.lineWidth = 2; g.stroke(); }
-    // כיוון המבט
-    g.strokeStyle = g.fillStyle; g.lineWidth = 2;
-    g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(p.facing) * 9, y + Math.sin(p.facing) * 9); g.stroke();
-  });
-  // כדור
-  const b = G.ball.pos;
-  g.fillStyle = '#fff'; g.strokeStyle = '#111'; g.lineWidth = 1.2;
-  g.beginPath(); g.arc(sx(b.x), sz(b.z), 3.2 + Math.min(3, b.y), 0, Math.PI * 2); g.fill(); g.stroke();
-}
-function updateMeTag() {
-  const el = $('me-tag');
-  const show = G.state !== 'menu' && G.state !== 'cinematic' && G.mode !== '2p' && !$('hud').classList.contains('hidden');
-  el.classList.toggle('hidden', !show);
-  if (!show) return;
-  const me = G.net && G.net.role === 'guest' ? G.players[1] : G.players[0];
-  const v = me.pos.clone(); v.y = 2.05;
+  const v = me.pos.clone(); v.y = 0.8;
   v.project(R.camera);
-  el.style.left = `${(v.x * 0.5 + 0.5) * innerWidth}px`;
-  el.style.top = `${(-v.y * 0.5 + 0.5) * innerHeight}px`;
+  let x = (v.x * 0.5 + 0.5) * innerWidth, y = (-v.y * 0.5 + 0.5) * innerHeight;
+  const top = 70, m = 44; // מתחת ללוח התוצאות
+  const inside = v.z < 1 && x > m && x < innerWidth - m && y > top && y < innerHeight - m;
+  el.classList.toggle('hidden', inside);
+  if (inside) return;
+  if (v.z >= 1) { x = innerWidth - x; y = innerHeight - y; } // מאחורי המצלמה
+  const cx = innerWidth / 2, cy = (innerHeight + top) / 2;
+  const ang = Math.atan2(y - cy, x - cx);
+  const ex = Math.max(m, Math.min(innerWidth - m, x)), ey = Math.max(top + 30, Math.min(innerHeight - m - 14, y));
+  el.style.left = `${ex}px`; el.style.top = `${ey}px`;
+  el.querySelector('svg').style.transform = `rotate(${ang}rad)`;
 }
 
 // ---------- HUD ----------
@@ -1253,8 +1227,7 @@ function loop() {
   for (const p of G.players) p.update(dt, G.time);
   updateExtras(dt);
   updateAimLine();
-  drawMinimap();
-  updateMeTag();
+  updateMeArrow();
   const b = G.ball;
   b.mesh.position.copy(b.pos);
   const sp = Math.hypot(b.vel.x, b.vel.z);
