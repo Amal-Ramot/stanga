@@ -62,7 +62,6 @@ async function boot() {
   window.__ready = R.backend;
   window.__S = S;
   window.__R = R;
-  window.__CAM = CAM;
   window.__dbg = { get crates() { return crates; }, get page() { return page; }, tap: (x, y) => onTap({ clientX: x, clientY: y }), solve: () => { for (const b of page.blanks) b.filled = true; S.filled = page.blanks.length; drawPage(); finish(); } }; // לבדיקות
 }
 
@@ -601,28 +600,35 @@ function stepCrates(dt) {
 // ---------- מצלמה ----------
 // מבט מלמעלה בזווית, כך שכל הדף והמחסן נכנסים למסך
 // זווית: 50° מהרצפה, 6° מהצד. המצלמה עוקבת אחרי אבי בהזזה בלבד (בלי סיבוב), כך שהשורות נשארות ישרות וקריאות
-const CAM = { tilt: 50, yaw: 6, hw: 10.6, panX: 4.6, panZ: [-2.2, 2.6] };
+// שתי זוויות:
+//  • מלמעלה – כל הסיפור והמחסן על המסך (כשאבי לא מחזיק מילה)
+//  • מקרוב – כשאבי מחזיק מילה, המצלמה מתקרבת ומלווה אותו עד שהוא מניח אותה
+const CAM_TOP = { tilt: 62, hw: 14.3, hd: 8.4 };
+const CAM_NEAR = { tilt: 52, hw: 7.2 };
 function camera() {
   const cam = R.camera;
   const aspect = innerWidth / innerHeight;
   const vt = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2));
   let pos, look;
+  const near = S.phase === 'play' && held;
   if (S.phase === 'menu') {
     const t = time * 0.06;
     pos = new THREE.Vector3(Math.sin(t) * 6, 11, 22); look = new THREE.Vector3(0, 0, 0);
+  } else if (near) {
+    // מקרוב, מאחורי אבי ומעט מעליו; מסתכלים קצת קדימה כדי לראות את השורות שלפניו
+    const tilt = THREE.MathUtils.degToRad(CAM_NEAR.tilt);
+    const dist = CAM_NEAR.hw / (vt * Math.min(aspect, 1.8));
+    look = new THREE.Vector3(THREE.MathUtils.clamp(kid.pos.x, -10, 10), 0, THREE.MathUtils.clamp(kid.pos.z - 1.2, -6, 5));
+    pos = look.clone().add(new THREE.Vector3(0, Math.sin(tilt), Math.cos(tilt)).multiplyScalar(dist));
   } else {
-    // זווית נמוכה וקרובה יותר, קצת מהצד – והמצלמה זזה בעדינות עם אבי כדי לראות את כל הדף
-    const tilt = THREE.MathUtils.degToRad(CAM.tilt);
-    const yaw = THREE.MathUtils.degToRad(CAM.yaw);
-    const hw = CAM.hw, hd = 7.6;
-    const dist = Math.max(hw / (vt * aspect), hd * Math.sin(tilt) / vt) * 1.0;
-    const fx = THREE.MathUtils.clamp(kid.pos.x * 0.6, -CAM.panX, CAM.panX);
-    const fz = THREE.MathUtils.clamp(kid.pos.z * 0.55 + 0.6, CAM.panZ[0], CAM.panZ[1]);
-    look = new THREE.Vector3(fx, 0, fz);
-    pos = look.clone().add(new THREE.Vector3(Math.sin(yaw) * Math.cos(tilt), Math.sin(tilt), Math.cos(yaw) * Math.cos(tilt)).multiplyScalar(dist));
+    // מלמעלה, כמו בהתחלה – כל הדף והמחסן נכנסים למסך
+    const tilt = THREE.MathUtils.degToRad(CAM_TOP.tilt);
+    const dist = Math.max(CAM_TOP.hw / (vt * aspect), CAM_TOP.hd * Math.sin(tilt) / vt) * 1.03;
+    look = new THREE.Vector3(0, 0, 0.45);
+    pos = look.clone().add(new THREE.Vector3(0, Math.sin(tilt), Math.cos(tilt)).multiplyScalar(dist));
   }
-  // תנועה רכה אחרי אבי (תלויה בזמן, כך שהיא זהה במחשב מהיר ואיטי)
-  const k = S.phase === 'menu' ? 1 : 1 - Math.exp(-camera.dt * 3);
+  // מעבר רך בין הזוויות (תלוי בזמן, כך שהוא זהה במחשב מהיר ואיטי)
+  const k = S.phase === 'menu' ? 1 : 1 - Math.exp(-(camera.dt || 0.016) * (near ? 3.2 : 2.4));
   cam.position.lerp(pos, k);
   if (!camera.look) camera.look = look.clone();
   camera.look.lerp(look, k);
