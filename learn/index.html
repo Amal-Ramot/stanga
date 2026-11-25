@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;900&family=Fredoka:wght@600;700&family=Secular+One&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;900&family=Noto+Sans+Hebrew:wght@500;700;800&family=Fredoka:wght@600;700&family=Secular+One&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css?v=__V__">
 <link rel="stylesheet" href="learn/learn.css?v=__V__">
 <script type="importmap">
@@ -29,7 +29,8 @@
     "./js/render.js": "./js/render.js?v=__V__",
     "./js/textures.js": "./js/textures.js?v=__V__",
     "./js/world.js": "./js/world.js?v=__V__",
-    "./learn/stories.js": "./learn/stories.js?v=__V__"
+    "./learn/stories.js": "./learn/stories.js?v=__V__",
+    "./learn/stories-a.js": "./learn/stories-a.js?v=__V__"
   }
 }
 </script>
@@ -51,6 +52,13 @@
   <div class="panel win menu-win">
     <h1 class="logo small"><span class="l1">סטנגה</span><span class="l2">קוראים!</span></h1>
     <p class="tagline">הסיפור פרוס על המגרש, אבל חסרות בו מילים.<br>אבי רץ למחסן המילים, לוקח מילה ומניח אותה במקום הנכון!</p>
+    <div class="row grade-row">
+      <label>כיתה</label>
+      <div class="seg">
+        <button data-grade="a" type="button">כיתה א' – עם ניקוד</button>
+        <button data-grade="c" type="button">כיתה ג'</button>
+      </div>
+    </div>
     <h4 class="pick-h">הסיפורים שלי <span id="progress" class="progress"></span></h4>
     <div id="stories" class="stories"></div>
     <button id="btn-rules" class="link" type="button">איך משחקים?</button>

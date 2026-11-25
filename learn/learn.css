@@ -60,3 +60,10 @@
   .stories { grid-template-columns: 1fr 1fr; }
   .story-card .tt { font-size: 15px; }
 }
+
+/* ---------- כיתה א': ניקוד ---------- */
+.panel.win .stories.nikud .tt, .panel.win .stories.nikud .tt * { font-family: 'Noto Sans Hebrew', 'Rubik', sans-serif !important; font-size: 18px; line-height: 1.5; }
+body.nikud .panel.win .over-text, body.nikud .panel.win .over-text * { font-family: 'Noto Sans Hebrew', 'Rubik', sans-serif !important; }
+body.nikud .over-text { font-size: 26px; line-height: 50px; }
+body.nikud #story-lbl { font-family: 'Noto Sans Hebrew', 'Rubik', sans-serif; }
+.grade-row .seg button { font-size: 18px; }

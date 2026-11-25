@@ -9,6 +9,7 @@ import { Player, KIDS, EXTRA_KIDS } from '../js/player.js';
 import { createRenderer } from '../js/render.js';
 import * as SFX from '../js/audio.js';
 import { STORIES } from './stories.js';
+import { STORIES_A } from './stories-a.js';
 
 const $ = (id) => document.getElementById(id);
 const isTouch = () => matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
@@ -23,7 +24,13 @@ const SHELF_Z = 6.5;                                 // שורת הארגזים 
 const CW = 2048, CH = Math.round(CW * PAGE.h / PAGE.w);
 const SPEED = 4.6;
 
-const S = { phase: 'menu', story: null, mistakes: 0, filled: 0 };
+const S = { phase: 'menu', story: null, mistakes: 0, filled: 0, grade: store.get('grade', 'c') };
+// כיתה א' (עם ניקוד) או כיתה ג'
+const list = () => (S.grade === 'a' ? STORIES_A : STORIES);
+const hasNikud = (story) => story && story.id.startsWith('a-');
+const NIKUD_FONT = '"Noto Sans Hebrew", Rubik';
+let FF = 'Rubik'; // הגופן של הדף והארגזים (בכיתה א' – גופן שמציג ניקוד ברור)
+const plain = (w) => w.replace(/[\u0591-\u05C7]/g, ''); // בלי ניקוד – להשוואה
 let R, W, A, kid, extras = [];
 let page = null;       // { mesh, canvas, ctx, tex, blanks: [...] }
 let crates = [];       // ארגזי המילים
@@ -37,6 +44,7 @@ async function boot() {
   const forced = new URLSearchParams(location.search).get('q');
   onProgress((p) => { $('load-bar').style.width = `${Math.round(p * 100)}%`; });
   try { await document.fonts.load('500 40px Rubik'); await document.fonts.load('800 40px Rubik'); } catch {}
+  try { await Promise.all(['500', '700', '800'].map((w) => document.fonts.load(`${w} 40px "Noto Sans Hebrew"`, 'אָבּ'))); } catch {}
   A = await loadAll();
   R = await createRenderer($('game'), A, forced || (isTouch() ? 'low' : 'medium'));
   W = buildWorld(R.scene, A);
@@ -112,13 +120,13 @@ function splitToken(tok) {
 
 function layoutPage(story) {
   const paras = story.field.map((i) => story.text[i]);
-  const need = [...story.blanks];
-  // מסמנים את המופע הראשון של כל מילה חסרה
+  const need = story.blanks.map(plain);
+  // מסמנים את המופע הראשון של כל מילה חסרה (ההשוואה בלי ניקוד)
   const tokens = [];
   paras.forEach((p, pi) => {
     p.split(/\s+/).forEach((t, ti) => {
       const s = splitToken(t);
-      const bi = need.indexOf(s.core);
+      const bi = need.indexOf(plain(s.core));
       tokens.push({ ...s, raw: t, blank: bi >= 0 ? (need[bi] = null, true) : false, paraStart: ti === 0 && pi > 0, first: ti === 0 });
     });
   });
@@ -126,7 +134,8 @@ function layoutPage(story) {
   const g = c.getContext('2d');
   // מחפשים את גודל האות הכי גדול שהקטע נכנס בו
   const allWords = [...story.blanks, ...story.extra];
-  let font = 64, lines;
+  // בכיתה א' – אותיות גדולות במיוחד
+  let font = hasNikud(story) ? 100 : 64, lines;
   for (; font >= 36; font -= 2) {
     lines = flow(g, tokens, font, allWords);
     if (lines.ok) break;
@@ -137,12 +146,12 @@ function layoutPage(story) {
 const M_RIGHT = 150, M_LEFT = 70;
 const topOf = (font, lh) => 50 + font * 1.3 + lh * 1.05; // קו הבסיס של השורה הראשונה (מתחת לכותרת)
 function flow(g, tokens, font, allWords) {
-  g.font = `500 ${font}px Rubik`;
-  const lh = Math.round(font * 1.62);
+  g.font = `500 ${font}px ${FF}`;
+  const lh = Math.round(font * (FF === 'Rubik' ? 1.62 : 1.85)); // לניקוד צריך יותר מקום בין השורות
   const space = g.measureText(' ').width * 1.4;
-  g.font = `700 ${font}px Rubik`;
+  g.font = `700 ${font}px ${FF}`;
   const boxW = Math.max(...allWords.map((w) => g.measureText(w).width)) + font * 0.7;
-  g.font = `500 ${font}px Rubik`;
+  g.font = `500 ${font}px ${FF}`;
   let x = CW - M_RIGHT, line = 0;
   const placed = [];
   for (const t of tokens) {
@@ -174,14 +183,14 @@ function drawPage() {
   for (const y of [CH * 0.2, CH * 0.5, CH * 0.8]) { g.beginPath(); g.arc(CW - 50, y, 18, 0, Math.PI * 2); g.fill(); }
   // כותרת
   g.direction = 'rtl'; g.textAlign = 'right'; g.textBaseline = 'alphabetic';
-  g.fillStyle = '#1f3f9c'; g.font = `800 ${Math.round(font * 1.15)}px Rubik`;
+  g.fillStyle = '#1f3f9c'; g.font = `800 ${Math.round(font * 1.15)}px ${FF}`;
   g.fillText(`${page.story.title}`, CW - M_RIGHT, TOP - lh * 1.05);
   // טקסט
   let bi = 0;
   for (const p of lay.placed) {
     const yBase = TOP + p.line * lh;
     let x = p.x;
-    g.font = `500 ${font}px Rubik`; g.fillStyle = '#141b33';
+    g.font = `500 ${font}px ${FF}`; g.fillStyle = '#141b33';
     if (p.t.pre) { g.fillText(p.t.pre, x, yBase); x -= p.wPre; }
     if (p.t.blank) {
       const b = page.blanks[bi++];
@@ -191,16 +200,16 @@ function drawPage() {
       if (b.filled) {
         g.fillStyle = 'rgba(46, 204, 113, .18)'; g.fill();
         g.lineWidth = 4; g.strokeStyle = '#1f8a4c'; g.setLineDash([]); g.stroke();
-        g.fillStyle = '#16703c'; g.font = `700 ${font}px Rubik`; g.textAlign = 'center';
+        g.fillStyle = '#16703c'; g.font = `700 ${font}px ${FF}`; g.textAlign = 'center';
         g.fillText(b.word, x - p.wCore / 2, yBase); g.textAlign = 'right';
       } else {
         g.fillStyle = 'rgba(255, 226, 64, .45)'; g.fill();
         g.lineWidth = 5; g.strokeStyle = '#d9a400'; g.setLineDash([16, 10]); g.stroke(); g.setLineDash([]);
-        g.fillStyle = 'rgba(160, 120, 0, .55)'; g.font = `700 ${Math.round(font * 0.7)}px Rubik`; g.textAlign = 'center';
+        g.fillStyle = 'rgba(160, 120, 0, .55)'; g.font = `700 ${Math.round(font * 0.7)}px ${FF}`; g.textAlign = 'center';
         g.fillText('?', x - p.wCore / 2, yBase - font * 0.12); g.textAlign = 'right';
       }
       x -= p.wCore;
-      g.font = `500 ${font}px Rubik`; g.fillStyle = '#1c2540';
+      g.font = `500 ${font}px ${FF}`; g.fillStyle = '#1c2540';
     } else { g.fillText(p.t.core, x, yBase); x -= p.wCore; }
     if (p.t.post) g.fillText(p.t.post, x, yBase);
   }
@@ -250,8 +259,8 @@ function labelTexture(word) {
   g.fillStyle = '#f6ecd2'; g.fillRect(0, 0, 512, 220);
   g.strokeStyle = '#8a6a3c'; g.lineWidth = 10; g.strokeRect(5, 5, 502, 210);
   g.fillStyle = '#1c2540'; g.direction = 'rtl'; g.textAlign = 'center'; g.textBaseline = 'middle';
-  let f = 120; g.font = `800 ${f}px Rubik`;
-  while (g.measureText(word).width > 460 && f > 50) { f -= 6; g.font = `800 ${f}px Rubik`; }
+  let f = 120; g.font = `800 ${f}px ${FF}`;
+  while (g.measureText(word).width > 460 && f > 50) { f -= 6; g.font = `800 ${f}px ${FF}`; }
   g.fillText(word, 256, 118);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
   return t;
@@ -279,7 +288,7 @@ function makeCrate(word, slot) {
 }
 function buildCrates(story) {
   for (const c of crates) R.scene.remove(c.group);
-  const words = [...story.blanks, ...story.extra];
+  const words = [...page.blanks.map((b) => b.word), ...story.extra];
   for (let i = words.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [words[i], words[j]] = [words[j], words[i]]; }
   const n = words.length, gap = 2.65;
   crates = words.map((w, i) => makeCrate(w, new THREE.Vector3((i - (n - 1) / 2) * gap, 0, SHELF_Z)));
@@ -307,7 +316,8 @@ function setupUI() {
   $('rules-close').addEventListener('click', () => { $('rules').classList.add('hidden'); SFX.initAudio(); });
   $('btn-home').addEventListener('click', toMenu);
   $('btn-again').addEventListener('click', () => startStory(S.story));
-  $('btn-next').addEventListener('click', () => { const i = STORIES.indexOf(S.story); if (STORIES[i + 1]) startStory(STORIES[i + 1]); else toMenu(); });
+  $('btn-next').addEventListener('click', () => { const L = list(); const i = L.indexOf(S.story); if (L[i + 1]) startStory(L[i + 1]); else toMenu(); });
+  document.querySelectorAll('[data-grade]').forEach((b) => b.addEventListener('click', () => { S.grade = b.dataset.grade; store.set('grade', S.grade); renderStoryList(); SFX.initAudio(); SFX.sfxKick(0.2); }));
   $('btn-other').addEventListener('click', toMenu);
   R.renderer.domElement.addEventListener('pointerdown', onTap);
   addEventListener('keydown', (e) => {
@@ -323,10 +333,13 @@ function setupUI() {
 }
 
 // סיפור נפתח אחרי שמשלימים את הסיפור שלפניו
-const isOpen = (i, done = store.get('done', {})) => i === 0 || done[STORIES[i - 1].id] != null;
+const isOpen = (i, done = store.get('done', {})) => i === 0 || done[list()[i - 1].id] != null;
 function renderStoryList() {
   const done = store.get('done', {});
   const box = $('stories'); box.innerHTML = '';
+  document.querySelectorAll('[data-grade]').forEach((x) => x.classList.toggle('on', x.dataset.grade === S.grade));
+  box.classList.toggle('nikud', S.grade === 'a');
+  const STORIES = list();
   STORIES.forEach((s, i) => {
     const b = document.createElement('button');
     b.type = 'button';
@@ -351,6 +364,8 @@ function checkOrientation() {
 
 function startStory(story) {
   S.story = story; S.mistakes = 0; S.filled = 0;
+  FF = hasNikud(story) ? NIKUD_FONT : 'Rubik';
+  document.body.classList.toggle('nikud', hasNikud(story));
   buildPage(story);
   buildCrates(story);
   held = null; goal = null;
@@ -499,6 +514,7 @@ function finish() {
   const done = store.get('done', {});
   done[S.story.id] = Math.max(done[S.story.id] ?? 0, st);
   store.set('done', done);
+  const STORIES = list();
   const idx = STORIES.indexOf(S.story);
   const nextS = STORIES[idx + 1];
   const allDone = STORIES.every((x) => done[x.id] != null);
@@ -509,13 +525,13 @@ function finish() {
   $('over-sub').textContent = S.mistakes === 0 ? 'בלי אף טעות – אלוף הקריאה של השכונה!' : `השלמת ${page.blanks.length} מילים עם ${S.mistakes} ${S.mistakes === 1 ? 'טעות' : 'טעויות'}.`;
   // הקטע המלא, עם המילים שהושלמו מודגשות
   const box = $('over-text'); box.innerHTML = '';
-  const need = [...S.story.blanks];
+  const need = S.story.blanks.map(plain);
   for (const i of S.story.field) {
     const p = document.createElement('p');
     S.story.text[i].split(/\s+/).forEach((t, k) => {
       if (k) p.append(' ');
       const s = splitToken(t);
-      const bi = need.indexOf(s.core);
+      const bi = need.indexOf(plain(s.core));
       if (bi >= 0) { need[bi] = null; p.append(s.pre); const m = document.createElement('mark'); m.textContent = s.core; p.append(m, s.post); }
       else p.append(t);
     });
