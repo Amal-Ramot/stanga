@@ -51,7 +51,7 @@
   <div class="panel win menu-win">
     <h1 class="logo small"><span class="l1">סטנגה</span><span class="l2">קוראים!</span></h1>
     <p class="tagline">הסיפור פרוס על המגרש, אבל חסרות בו מילים.<br>אבי רץ למחסן המילים, לוקח מילה ומניח אותה במקום הנכון!</p>
-    <h4 class="pick-h">בוחרים סיפור:</h4>
+    <h4 class="pick-h">הסיפורים שלי <span id="progress" class="progress"></span></h4>
     <div id="stories" class="stories"></div>
     <button id="btn-rules" class="link" type="button">איך משחקים?</button>
     <a class="link back" href="./">⚽ חזרה לסטנגה הרגילה</a>
@@ -70,6 +70,7 @@
       <li>מילה במקום הנכון נשארת בסיפור. מילה שלא מתאימה חוזרת למחסן – ומנסים שוב.</li>
       <li>זהירות: <b>יש במחסן גם מילים שלא שייכות לסיפור!</b> קוראים את המשפט לפני ואחרי.</li>
       <li>כמה שפחות טעויות – יותר כוכבים ⭐</li>
+      <li>השלמתם סיפור? <b>נפתח הסיפור הבא!</b> 🔓</li>
     </ul>
     <button id="rules-close" class="big" type="button">יאללה!</button>
   </div>
@@ -99,8 +100,9 @@
     <p id="over-sub" class="over-sub"></p>
     <div class="over-read-h">קוראים את כל הקטע:</div>
     <div id="over-text" class="over-text"></div>
-    <button id="btn-again" class="big" type="button">עוד פעם</button>
-    <button id="btn-other" class="link" type="button">סיפור אחר</button>
+    <button id="btn-next" class="big" type="button">לסיפור הבא ▶</button>
+    <button id="btn-again" class="link" type="button">עוד פעם את אותו סיפור</button>
+    <button id="btn-other" class="link" type="button">לכל הסיפורים</button>
   </div>
 </div>
 

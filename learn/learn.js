@@ -53,7 +53,7 @@ async function boot() {
   window.__ready = R.backend;
   window.__S = S;
   window.__R = R;
-  window.__dbg = { get crates() { return crates; }, get page() { return page; }, tap: (x, y) => onTap({ clientX: x, clientY: y }) };
+  window.__dbg = { get crates() { return crates; }, get page() { return page; }, tap: (x, y) => onTap({ clientX: x, clientY: y }), solve: () => { for (const b of page.blanks) b.filled = true; S.filled = page.blanks.length; drawPage(); finish(); } }; // לבדיקות
 }
 
 // ילדי השכונה צופים מהצד
@@ -275,6 +275,7 @@ function setupUI() {
   $('rules-close').addEventListener('click', () => { $('rules').classList.add('hidden'); SFX.initAudio(); });
   $('btn-home').addEventListener('click', toMenu);
   $('btn-again').addEventListener('click', () => startStory(S.story));
+  $('btn-next').addEventListener('click', () => { const i = STORIES.indexOf(S.story); if (STORIES[i + 1]) startStory(STORIES[i + 1]); else toMenu(); });
   $('btn-other').addEventListener('click', toMenu);
   R.renderer.domElement.addEventListener('pointerdown', onTap);
   addEventListener('keydown', (e) => {
@@ -289,18 +290,25 @@ function setupUI() {
   checkOrientation();
 }
 
+// סיפור נפתח אחרי שמשלימים את הסיפור שלפניו
+const isOpen = (i, done = store.get('done', {})) => i === 0 || done[STORIES[i - 1].id] != null;
 function renderStoryList() {
   const done = store.get('done', {});
   const box = $('stories'); box.innerHTML = '';
-  for (const s of STORIES) {
+  STORIES.forEach((s, i) => {
     const b = document.createElement('button');
-    b.type = 'button'; b.className = 'story-card';
+    b.type = 'button';
+    const open = isOpen(i, done);
     const st = done[s.id];
-    b.innerHTML = `<span class="em">${s.emoji}</span><span class="tt"></span>${st != null ? `<span class="best">${'★'.repeat(st)}${'☆'.repeat(3 - st)}</span>` : ''}`;
-    b.querySelector('.tt').textContent = s.title;
-    b.addEventListener('click', () => { SFX.initAudio(); SFX.startAmbience(); startStory(s); });
+    b.className = 'story-card' + (open ? '' : ' locked') + (open && st == null ? ' next' : '');
+    b.innerHTML = `<span class="num">${i + 1}</span><span class="em">${open ? s.emoji : '🔒'}</span><span class="tt"></span>${st != null ? `<span class="best">${'★'.repeat(st)}${'☆'.repeat(3 - st)}</span>` : ''}`;
+    b.querySelector('.tt').textContent = open ? s.title : 'נפתח אחרי הסיפור הקודם';
+    b.disabled = !open;
+    b.addEventListener('click', () => { if (!open) return; SFX.initAudio(); SFX.startAmbience(); startStory(s); });
     box.appendChild(b);
-  }
+  });
+  const n = STORIES.filter((s) => done[s.id] != null).length;
+  $('progress').textContent = `(${n} מתוך ${STORIES.length})`;
 }
 const starsFor = (m) => (m === 0 ? 3 : m <= 2 ? 2 : 1);
 
@@ -459,7 +467,12 @@ function finish() {
   const done = store.get('done', {});
   done[S.story.id] = Math.max(done[S.story.id] ?? 0, st);
   store.set('done', done);
-  $('over-title').textContent = 'השלמת את הסיפור! 🎉';
+  const idx = STORIES.indexOf(S.story);
+  const nextS = STORIES[idx + 1];
+  const allDone = STORIES.every((x) => done[x.id] != null);
+  $('over-title').textContent = !nextS && allDone ? 'סיימת את כל הסיפורים! 🏆' : 'השלמת את הסיפור! 🎉';
+  $('btn-next').textContent = nextS ? `לסיפור הבא: ${nextS.emoji} ${nextS.title} ▶` : 'לכל הסיפורים';
+  $('btn-next').classList.toggle('unlock', !!nextS);
   $('over-stars').textContent = '⭐'.repeat(st) + '☆'.repeat(3 - st);
   $('over-sub').textContent = S.mistakes === 0 ? 'בלי אף טעות – אלוף הקריאה של השכונה!' : `השלמת ${page.blanks.length} מילים עם ${S.mistakes} ${S.mistakes === 1 ? 'טעות' : 'טעויות'}.`;
   // הקטע המלא, עם המילים שהושלמו מודגשות

@@ -18,6 +18,13 @@
 .story-card .em { font-size: 30px; line-height: 1; }
 .story-card .tt { font-weight: 700; font-size: 17px; line-height: 1.25; }
 .story-card .best { position: absolute; top: -11px; left: 10px; font-size: 15px; color: #e0a800; text-shadow: 0 1px 0 #fff; letter-spacing: 1px; }
+.story-card .num { position: absolute; top: -10px; right: 12px; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 99px; background: var(--pen); color: #fff; font-size: 13px; font-weight: 800; line-height: 22px; text-align: center; }
+.story-card.locked { opacity: .5; border-style: dashed; cursor: default; background: rgba(0, 0, 0, .03); }
+.story-card.locked:hover { transform: none; background: rgba(0, 0, 0, .03); }
+.story-card.locked .tt { font-size: 14px; font-weight: 600; }
+.story-card.next { background: rgba(255, 226, 64, .55); animation: nudge 1.6s ease-in-out infinite; }
+@keyframes nudge { 0%, 100% { transform: rotate(-.8deg) scale(1); } 50% { transform: rotate(.6deg) scale(1.04); } }
+.progress { font-size: 16px; color: var(--pen); }
 .menu-win .back { display: inline-block; margin-top: 6px; font-size: 16px !important; }
 .rules kbd { padding: 1px 6px; border: 1.5px solid #555; border-radius: 4px; background: #fff; font-size: .85em; }
 
@@ -42,10 +49,12 @@
 .over-stars { font-size: 46px; letter-spacing: 4px; }
 .over-sub { font-size: 19px; color: var(--pen); font-weight: 600; }
 .over-read-h { margin-top: 6px; text-align: right; font-weight: 700; color: var(--pencil); }
-.over-text { text-align: right; font: 400 19px/32px 'Rubik', sans-serif !important; color: #1c1c28; user-select: text; -webkit-user-select: text; }
-.over-text p { margin: 0; text-indent: 1.4em; font: inherit !important; }
-.over-text mark { background: linear-gradient(176deg, transparent 10%, var(--marker) 14%, var(--marker) 88%, transparent 92%); color: var(--ok); font-weight: 700; font-family: 'Rubik', sans-serif !important; }
-.over-win .big { font-size: 28px !important; }
+.panel.win .over-text, .panel.win .over-text * { font-family: 'Rubik', sans-serif !important; }
+.over-text { text-align: right; font-size: 19px; line-height: 32px; color: #1c1c28; user-select: text; -webkit-user-select: text; }
+.over-text p { margin: 0; text-indent: 1.4em; }
+.over-text mark { background: linear-gradient(176deg, transparent 10%, var(--marker) 14%, var(--marker) 88%, transparent 92%); color: var(--ok); font-weight: 700; }
+.over-win .big { font-size: 26px !important; }
+.over-win .link { display: block; margin: 8px auto 0; }
 
 @media (max-aspect-ratio: 95/100) {
   .stories { grid-template-columns: 1fr 1fr; }
