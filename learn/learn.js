@@ -604,7 +604,7 @@ function stepCrates(dt) {
 //  • מלמעלה – כל הסיפור והמחסן על המסך (כשאבי לא מחזיק מילה)
 //  • מקרוב – כשאבי מחזיק מילה, המצלמה מתקרבת ומלווה אותו עד שהוא מניח אותה
 const CAM_TOP = { tilt: 62, hw: 14.3, hd: 8.4 };
-const CAM_NEAR = { tilt: 48, hw: 3.4, ahead: 1.4 }; // ממש קרוב מאחורי אבי, קצת מלמעלה כדי שהארגז לא יסתיר את הטקסט שלפניו
+const CAM_NEAR = { tilt: 48, hw: 4.6, ahead: 1.5 }; // ממש קרוב מאחורי אבי, קצת מלמעלה כדי שהארגז לא יסתיר את הטקסט שלפניו
 function camera() {
   const cam = R.camera;
   const aspect = innerWidth / innerHeight;
