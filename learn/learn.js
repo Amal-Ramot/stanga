@@ -604,7 +604,7 @@ function stepCrates(dt) {
 //  • מלמעלה – כל הסיפור והמחסן על המסך (כשאבי לא מחזיק מילה)
 //  • מקרוב – כשאבי מחזיק מילה, המצלמה מתקרבת ומלווה אותו עד שהוא מניח אותה
 const CAM_TOP = { tilt: 62, hw: 14.3, hd: 8.4 };
-const CAM_NEAR = { tilt: 52, hw: 7.2 };
+const CAM_NEAR = { tilt: 48, hw: 3.4, ahead: 1.4 }; // ממש קרוב מאחורי אבי, קצת מלמעלה כדי שהארגז לא יסתיר את הטקסט שלפניו
 function camera() {
   const cam = R.camera;
   const aspect = innerWidth / innerHeight;
@@ -618,7 +618,7 @@ function camera() {
     // מקרוב, מאחורי אבי ומעט מעליו; מסתכלים קצת קדימה כדי לראות את השורות שלפניו
     const tilt = THREE.MathUtils.degToRad(CAM_NEAR.tilt);
     const dist = CAM_NEAR.hw / (vt * Math.min(aspect, 1.8));
-    look = new THREE.Vector3(THREE.MathUtils.clamp(kid.pos.x, -10, 10), 0, THREE.MathUtils.clamp(kid.pos.z - 1.2, -6, 5));
+    look = new THREE.Vector3(kid.pos.x, 0.5, kid.pos.z - CAM_NEAR.ahead);
     pos = look.clone().add(new THREE.Vector3(0, Math.sin(tilt), Math.cos(tilt)).multiplyScalar(dist));
   } else {
     // מלמעלה, כמו בהתחלה – כל הדף והמחסן נכנסים למסך
@@ -628,7 +628,7 @@ function camera() {
     pos = look.clone().add(new THREE.Vector3(0, Math.sin(tilt), Math.cos(tilt)).multiplyScalar(dist));
   }
   // מעבר רך בין הזוויות (תלוי בזמן, כך שהוא זהה במחשב מהיר ואיטי)
-  const k = S.phase === 'menu' ? 1 : 1 - Math.exp(-(camera.dt || 0.016) * (near ? 3.2 : 2.4));
+  const k = S.phase === 'menu' ? 1 : 1 - Math.exp(-(camera.dt || 0.016) * (near ? 4 : 2.4));
   cam.position.lerp(pos, k);
   if (!camera.look) camera.look = look.clone();
   camera.look.lerp(look, k);
