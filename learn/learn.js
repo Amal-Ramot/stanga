@@ -584,7 +584,8 @@ function stepCrates(dt) {
 
 // ---------- מצלמה ----------
 // מבט מלמעלה בזווית, כך שכל הדף והמחסן נכנסים למסך
-const CAM = { tilt: 50, yaw: 6, hw: 13.4, pan: 0 }; // זווית: 50° מהרצפה, 6° מהצד; המצלמה לא זזה כדי שהטקסט יישאר ישר וקריא
+// זווית: 50° מהרצפה, 6° מהצד. המצלמה עוקבת אחרי אבי בהזזה בלבד (בלי סיבוב), כך שהשורות נשארות ישרות וקריאות
+const CAM = { tilt: 50, yaw: 6, hw: 10.6, panX: 4.6, panZ: [-2.2, 2.6] };
 function camera() {
   const cam = R.camera;
   const aspect = innerWidth / innerHeight;
@@ -599,13 +600,16 @@ function camera() {
     const yaw = THREE.MathUtils.degToRad(CAM.yaw);
     const hw = CAM.hw, hd = 7.6;
     const dist = Math.max(hw / (vt * aspect), hd * Math.sin(tilt) / vt) * 1.0;
-    const fx = THREE.MathUtils.clamp(kid.pos.x * 0.45, -CAM.pan, CAM.pan);
-    look = new THREE.Vector3(fx, 0, 1.2);
+    const fx = THREE.MathUtils.clamp(kid.pos.x * 0.6, -CAM.panX, CAM.panX);
+    const fz = THREE.MathUtils.clamp(kid.pos.z * 0.55 + 0.6, CAM.panZ[0], CAM.panZ[1]);
+    look = new THREE.Vector3(fx, 0, fz);
     pos = look.clone().add(new THREE.Vector3(Math.sin(yaw) * Math.cos(tilt), Math.sin(tilt), Math.cos(yaw) * Math.cos(tilt)).multiplyScalar(dist));
   }
-  cam.position.lerp(pos, S.phase === 'menu' ? 1 : 0.08);
+  // תנועה רכה אחרי אבי (תלויה בזמן, כך שהיא זהה במחשב מהיר ואיטי)
+  const k = S.phase === 'menu' ? 1 : 1 - Math.exp(-camera.dt * 3);
+  cam.position.lerp(pos, k);
   if (!camera.look) camera.look = look.clone();
-  camera.look.lerp(look, S.phase === 'menu' ? 1 : 0.08);
+  camera.look.lerp(look, k);
   cam.lookAt(camera.look);
   cam.updateMatrixWorld();
   R.sun.target.position.set(camera.look.x, 0, camera.look.z);
@@ -628,7 +632,7 @@ function loop() {
     e.update(dt, time);
   }
   animateWorld(W, time);
-  camera();
+  camera.dt = dt; camera();
   R.render();
 }
 
