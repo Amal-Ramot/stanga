@@ -54,6 +54,7 @@ async function boot() {
   window.__ready = R.backend;
   window.__S = S;
   window.__R = R;
+  window.__CAM = CAM;
   window.__dbg = { get crates() { return crates; }, get page() { return page; }, tap: (x, y) => onTap({ clientX: x, clientY: y }), solve: () => { for (const b of page.blanks) b.filled = true; S.filled = page.blanks.length; drawPage(); finish(); } }; // לבדיקות
 }
 
@@ -583,6 +584,7 @@ function stepCrates(dt) {
 
 // ---------- מצלמה ----------
 // מבט מלמעלה בזווית, כך שכל הדף והמחסן נכנסים למסך
+const CAM = { tilt: 50, yaw: 6, hw: 13.4, pan: 0 }; // זווית: 50° מהרצפה, 6° מהצד; המצלמה לא זזה כדי שהטקסט יישאר ישר וקריא
 function camera() {
   const cam = R.camera;
   const aspect = innerWidth / innerHeight;
@@ -592,19 +594,22 @@ function camera() {
     const t = time * 0.06;
     pos = new THREE.Vector3(Math.sin(t) * 6, 11, 22); look = new THREE.Vector3(0, 0, 0);
   } else {
-    const tilt = THREE.MathUtils.degToRad(62);
-    const hw = 14.3, hd = 8.4; // השורה הקרובה (המחסן) נראית רחבה יותר בגלל הפרספקטיבה
-    const dist = Math.max(hw / (vt * aspect), hd * Math.sin(tilt) / vt) * 1.03;
-    look = new THREE.Vector3(0, 0, 0.45);
-    pos = look.clone().add(new THREE.Vector3(0, Math.sin(tilt), Math.cos(tilt)).multiplyScalar(dist));
+    // זווית נמוכה וקרובה יותר, קצת מהצד – והמצלמה זזה בעדינות עם אבי כדי לראות את כל הדף
+    const tilt = THREE.MathUtils.degToRad(CAM.tilt);
+    const yaw = THREE.MathUtils.degToRad(CAM.yaw);
+    const hw = CAM.hw, hd = 7.6;
+    const dist = Math.max(hw / (vt * aspect), hd * Math.sin(tilt) / vt) * 1.0;
+    const fx = THREE.MathUtils.clamp(kid.pos.x * 0.45, -CAM.pan, CAM.pan);
+    look = new THREE.Vector3(fx, 0, 1.2);
+    pos = look.clone().add(new THREE.Vector3(Math.sin(yaw) * Math.cos(tilt), Math.sin(tilt), Math.cos(yaw) * Math.cos(tilt)).multiplyScalar(dist));
   }
   cam.position.lerp(pos, S.phase === 'menu' ? 1 : 0.08);
   if (!camera.look) camera.look = look.clone();
   camera.look.lerp(look, S.phase === 'menu' ? 1 : 0.08);
   cam.lookAt(camera.look);
   cam.updateMatrixWorld();
-  R.sun.target.position.set(0, 0, 0);
-  R.sun.position.copy(R.SUN_OFFSET);
+  R.sun.target.position.set(camera.look.x, 0, camera.look.z);
+  R.sun.position.copy(R.SUN_OFFSET).add(R.sun.target.position);
 }
 
 // ---------- לולאה ----------
