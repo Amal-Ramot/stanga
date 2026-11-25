@@ -40,6 +40,7 @@ async function boot() {
   A = await loadAll();
   R = await createRenderer($('game'), A, forced || (isTouch() ? 'low' : 'medium'));
   W = buildWorld(R.scene, A);
+  clearPageArea();
   kid = new Player(R.scene, { ...KIDS.p1, model: A.kids && A.kids.Casual_Male, shirt: '#7fb2e0', pants: '#2f4a73', skin: '#e2b08a' });
   kid.arrow.visible = false;
   kid.ringMat.color.set('#ffd23f');
@@ -54,6 +55,34 @@ async function boot() {
   window.__S = S;
   window.__R = R;
   window.__dbg = { get crates() { return crates; }, get page() { return page; }, tap: (x, y) => onTap({ clientX: x, clientY: y }), solve: () => { for (const b of page.blanks) b.filled = true; S.filled = page.blanks.length; drawPage(); finish(); } }; // לבדיקות
+}
+
+// מתחת לדף אין בורות ועשבים – אחרת הם מציצים דרך הנייר ומסתירים אותיות
+function clearPageArea() {
+  const x0 = PAGE.cx - PAGE.w / 2 - 0.4, x1 = PAGE.cx + PAGE.w / 2 + 0.4;
+  const z0 = PAGE.cz - PAGE.h / 2 - 0.4, z1 = PAGE.cz + PAGE.h / 2 + 0.4;
+  const inside = (x, z) => x > x0 && x < x1 && z > z0 && z < z1;
+  R.scene.traverse((o) => {
+    if (!o.isMesh || Array.isArray(o.material)) return;
+    const m = o.material;
+    // בורות: מדבקות שקופות קטנות על האספלט
+    if (m.transparent && o.position.y > 0.015 && o.position.y < 0.02 && inside(o.position.x, o.position.z)) o.visible = false;
+    // עשבים: גוש אחד מאוחד ונמוך – מעלימים רק את המשולשים שבתוך הדף
+    if (m.alphaTest > 0 && o.geometry && o.parent === R.scene) {
+      const g = o.geometry; g.computeBoundingBox();
+      if (g.boundingBox.max.y > 0.7) return;
+      const pos = g.attributes.position;
+      const idx = g.index;
+      const n = idx ? idx.count : pos.count;
+      for (let i = 0; i < n; i += 3) {
+        const a = idx ? idx.getX(i) : i, b = idx ? idx.getX(i + 1) : i + 1, c = idx ? idx.getX(i + 2) : i + 2;
+        const cx = (pos.getX(a) + pos.getX(b) + pos.getX(c)) / 3, cz = (pos.getZ(a) + pos.getZ(b) + pos.getZ(c)) / 3;
+        if (!inside(cx, cz)) continue;
+        if (idx) { idx.setX(i + 1, a); idx.setX(i + 2, a); } else { for (const v of [b, c]) pos.setXYZ(v, pos.getX(a), pos.getY(a), pos.getZ(a)); }
+      }
+      if (idx) idx.needsUpdate = true; else pos.needsUpdate = true;
+    }
+  });
 }
 
 // ילדי השכונה צופים מהצד
@@ -192,10 +221,12 @@ function buildPage(story) {
   page.tex = new THREE.CanvasTexture(L.canvas);
   page.tex.colorSpace = THREE.SRGBColorSpace;
   page.tex.anisotropy = 8;
-  const mat = new THREE.MeshStandardMaterial({ map: page.tex, roughness: 1, metalness: 0 });
+  // הדף מצויר אחרי הקווים והגיר של המגרש (שהם שכבות שקופות), כך שהם לא עולים על האותיות
+  const mat = new THREE.MeshStandardMaterial({ map: page.tex, roughness: 1, metalness: 0, transparent: true, opacity: 1, depthWrite: true, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -6 });
   page.mesh = new THREE.Mesh(new THREE.PlaneGeometry(PAGE.w, PAGE.h), mat);
   page.mesh.rotation.x = -Math.PI / 2;
-  page.mesh.position.set(PAGE.cx, 0.035, PAGE.cz);
+  page.mesh.renderOrder = 5;
+  page.mesh.position.set(PAGE.cx, 0.06, PAGE.cz);
   page.mesh.receiveShadow = true;
   R.scene.add(page.mesh);
   drawPage();
@@ -205,7 +236,7 @@ function buildPage(story) {
     const w = c.x - a.x, d = c.z - a.z;
     const glow = new THREE.Mesh(new THREE.PlaneGeometry(w + 0.12, d + 0.12),
       new THREE.MeshBasicMaterial({ color: '#ffe14a', transparent: true, opacity: 0, depthWrite: false }));
-    glow.rotation.x = -Math.PI / 2; glow.position.set((a.x + c.x) / 2, 0.05, (a.z + c.z) / 2);
+    glow.rotation.x = -Math.PI / 2; glow.position.set((a.x + c.x) / 2, 0.075, (a.z + c.z) / 2); glow.renderOrder = 6;
     glow.userData.blank = b; b.glow = glow; b.center = glow.position.clone(); b.size = [w, d];
     R.scene.add(glow);
   }
@@ -249,7 +280,7 @@ function buildCrates(story) {
   for (const c of crates) R.scene.remove(c.group);
   const words = [...story.blanks, ...story.extra];
   for (let i = words.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [words[i], words[j]] = [words[j], words[i]]; }
-  const n = words.length, gap = 2.75;
+  const n = words.length, gap = 2.65;
   crates = words.map((w, i) => makeCrate(w, new THREE.Vector3((i - (n - 1) / 2) * gap, 0, SHELF_Z)));
 }
 // שלט "מחסן המילים" ומשטח עץ מתחת לארגזים
@@ -562,7 +593,7 @@ function camera() {
     pos = new THREE.Vector3(Math.sin(t) * 6, 11, 22); look = new THREE.Vector3(0, 0, 0);
   } else {
     const tilt = THREE.MathUtils.degToRad(62);
-    const hw = 12.9, hd = 8.4;
+    const hw = 14.3, hd = 8.4; // השורה הקרובה (המחסן) נראית רחבה יותר בגלל הפרספקטיבה
     const dist = Math.max(hw / (vt * aspect), hd * Math.sin(tilt) / vt) * 1.03;
     look = new THREE.Vector3(0, 0, 0.45);
     pos = look.clone().add(new THREE.Vector3(0, Math.sin(tilt), Math.cos(tilt)).multiplyScalar(dist));
