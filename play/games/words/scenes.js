@@ -1,7 +1,12 @@
 // תסריטים: איך כל סיפור "קורה" בשכונה אחרי שמשלימים אותו.
 // כל תסריט מקבל T (ראו theater.js). T.beat(i, ...) מציג את פסקה i של הסיפור ומשחק אותה.
 // המפתח הוא ה-id של הסיפור (stories.js / stories-a.js).
+import * as THREE from 'three';
 import { PROPS, addSplash } from './theater.js';
+
+// פס מבריק (שביל של חילזון)
+function THREE_PLANE(w, h) { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ color: '#dfe8ee', roughness: 0.05, metalness: 0.4, transparent: true, opacity: 0.6 })); m.rotation.x = -Math.PI / 2; return m; }
+function C_shake() {}
 
 // ---------- דמויות השכונה ----------
 const AVI = { model: 'Casual_Male', shirt: '#7fb2e0', pants: '#2f4a73', skin: '#e2b08a', hair: '#2a1a10' };
@@ -9,6 +14,8 @@ const YANIV = { model: 'Casual2_Male', shirt: '#e8e4da', pants: '#4a4d55', skin:
 const NOA = { model: 'Casual_Female', shirt: '#f29bb8', pants: '#3c5a86', skin: '#f0c9a8', hair: '#6b3e1f' };
 const SASHA = { model: 'Casual3_Male', shirt: '#7fbf7a', pants: '#3a3a3a', skin: '#f3d2b5', hair: '#e0c27a' };
 const MOTI = { model: 'Casual_Bald', shirt: '#9fc2df', pants: '#3a5a86', skin: '#d9a27a', hair: '#2a1a10' };
+const DANA = { model: 'Casual2_Female', shirt: '#ffd166', pants: '#2f3f66', skin: '#e8bb94', hair: '#b8862e' };
+const MOSHE = { model: 'Worker_Male', shirt: '#9ad1a0', pants: '#4a4a4a', skin: '#a8714a', hair: '#0f0905' };
 const KID_SMALL = { model: 'Casual2_Male', shirt: '#ffd166', pants: '#3a5a86', skin: '#e8bb94', hair: '#3b2414', height: 1.12 };
 const SISTER = { model: 'Casual2_Female', shirt: '#c98bd9', pants: '#5a4a6a', skin: '#f0c9a8', hair: '#6b3e1f', height: 1.1 };
 // מבוגרים – אותן דמויות, גבוהות יותר ובבגדים של מבוגרים
@@ -424,6 +431,404 @@ export const SCENES = {
       T.say(avi, '♪♪♪', 1.6);
       for (let i = 0; i < 4; i++) { T.anim(grandpa, 'cheer'); grandpa.facing += Math.PI / 2; await T.wait(0.7); }
       T.say(grandpa, 'אתם גאונים! 💃', 2.6);
+    });
+  },
+
+  // העפיפון של דנה
+  async kite(T) {
+    const dana = T.actor('דנה', { ...DANA, x: -2, z: 2 });
+    const avi = T.actor('אבי', { ...AVI, x: 6, z: 4 });
+    const tree = T.add(PROPS.tree()); tree.position.set(9, 0, -6);
+    const kite = T.add(PROPS.kite()); kite.position.set(-1.6, 1, 2.3); kite.rotation.x = -1.2;
+    T.cam([-1.5, 2, 5.5], [-1.8, 0.8, 2]);
+    await T.beat(0, async () => { T.say(dana, 'אדום וצהוב! 🪁', 2.4); await T.wait(1); T.anim(dana, 'cheer'); });
+    await T.beat(1, async () => {
+      T.cam([-2, 5, 12], [2, 3, -2]);
+      kite.rotation.x = 0;
+      const run = T.walk(dana, 6, 2, 2.6);
+      await T.tween(kite, { x: 2, y: 7, z: -3 }, 3); await run;
+      await T.tween(kite, { x: 6, y: 9, z: -5 }, 2);
+      T.say(dana, 'הוא עף גבוה! 😃', 2);
+      await T.wait(1.4);
+      T.say(dana, 'אוי! החוט נקרע!', 2.2);
+      await T.tween(kite, { x: 9, y: 3.6, z: -5.4 }, 2);
+      T.cam([5, 3, 1], [8.5, 2.6, -5.5]);
+      T.walk(dana, 8, -4, 2.4);
+      const stick = T.add(PROPS.stick()); stick.visible = false;
+      await T.walk(avi, 9.6, -4.2, 2.4);
+      stick.visible = true; stick.position.set(9.4, 2, -4.6); stick.rotation.x = 0.5;
+      T.say(avi, 'בזהירות...', 1.8);
+      await T.tween(kite, { y: 1.2, z: -4.4 }, 2);
+      T.remove(stick); T.anim(dana, 'cheer'); T.anim(avi, 'cheer'); T.say(dana, 'תודה אבי!', 2.2);
+    });
+  },
+
+  // יום שישי בשוק
+  async shuk(T) {
+    const s1 = T.add(PROPS.stand('ירקות', '#43a047')); s1.position.set(-4, 0, -6); s1.add(PROPS.produce('#e53935'));
+    const s2 = T.add(PROPS.stand('פירות', '#fb8c00')); s2.position.set(1, 0, -6); s2.add(PROPS.produce('#ff9800'));
+    const s3 = T.add(PROPS.stand('פלאפל', '#8d6e63')); s3.position.set(6.5, 0, -6);
+    const sel1 = T.actor('מוכר', { ...SELLER, x: -4, z: -6.8, facing: Math.PI / 2 });
+    const sel2 = T.actor('מוכרת', { ...WOMAN, x: 1, z: -6.8, facing: Math.PI / 2 });
+    const sel3 = T.actor('מוכר פלאפל', { ...MAN, x: 6.5, z: -6.8, facing: Math.PI / 2 });
+    const noa = T.actor('נועה', { ...NOA, x: -10, z: 2 });
+    const savta = T.actor('סבתא', { ...GRANDMA, x: -11, z: 2.6 });
+    T.cam([-2, 4, 6], [0, 1, -4]);
+    await T.beat(0, async () => {
+      T.walk(savta, -4.6, -3.8, 1.6); await T.walk(noa, -3.4, -3.6, 1.6);
+      T.say(sel1, 'עגבניות בזול!', 2); await T.wait(1.2); T.say(sel2, 'תפוזים מתוקים!', 2);
+    });
+    const basket = T.add(PROPS.basket()); basket.visible = false;
+    await T.beat(1, async () => {
+      await T.wait(1);
+      basket.visible = true; T.hold(basket, noa); basket.userData.holdY = 0.7;
+      T.say(noa, 'אוף, הסל כבד! 😅', 2.2);
+      T.cam([4, 3, 0], [6, 1, -5]);
+      T.walk(savta, 5.6, -4.2, 1.6); await T.walk(noa, 7, -4.4, 1.4);
+      const pita = T.add(PROPS.pita()); T.hold(pita, noa); pita.userData.holdY = 1.15;
+      T.say(sel3, 'פיתה חמה! 🥙', 2.2); await T.wait(2);
+      T.say(noa, 'ממממ! טעים!', 2.2); T.anim(noa, 'cheer');
+    });
+  },
+
+  // חילזון אחרי הגשם
+  async snail(T) {
+    T.rain(true);
+    const yaniv = T.actor('יניב', { ...YANIV, x: -6, z: 4 });
+    const snail = T.add(PROPS.snail()); snail.position.set(-1, 0.02, 1);
+    const trail = T.add(THREE_PLANE(0.06, 1.2)); trail.position.set(-1, 0.07, 1.7);
+    T.cam([0.6, 1.2, 3], [-0.8, 0.2, 1]);
+    await T.beat(0, async () => {
+      await T.wait(1.6); T.rain(false);
+      T.walk(yaniv, -1.6, 2.2, 1.6);
+      await T.tween(snail, { z: 0.4 }, 4);
+    });
+    const leaf = T.add(PROPS.leaf()); leaf.position.set(-8, 0.25, -5);
+    await T.beat(1, async () => {
+      T.face(yaniv, -1, 0.4); T.say(yaniv, 'מישהו עוד ידרוך עליך!', 2.4); await T.wait(2);
+      T.hold(snail, yaniv); snail.userData.holdY = 0.9;
+      T.cam([-3, 2.4, 1], [-6, 0.6, -3]);
+      await T.walk(yaniv, -7.3, -4.2, 1.2);
+      T.hold(snail, null); snail.position.set(-8, 0.32, -5);
+      T.say(yaniv, 'כאן יהיה לך בטוח 🐌', 2.6); await T.wait(2.6);
+      await T.walk(yaniv, -3, 1, 2.4);
+      T.say(yaniv, 'למחרת...', 1.4);
+      await T.walk(yaniv, -7.2, -4.2, 2.4);
+      T.face(yaniv, -8, -5); T.anim(yaniv, 'cheer'); T.say(yaniv, 'הוא עדיין פה! 😊', 2.4);
+    });
+  },
+
+  // האופניים האדומים
+  async bike(T) {
+    const avi = T.actor('אבי', { ...AVI, x: -6, z: 2, facing: 0 });
+    const dad = T.actor('אבא', { ...MAN, x: 8, z: 6 });
+    const mom = T.actor('אמא', { ...MOM, x: -9.5, y: 4.2, z: -13.6, facing: Math.PI / 2 });
+    const bike = T.add(PROPS.bike()); T.hold(bike, avi); bike.userData.holdY = 0;
+    T.cam([0, 4, 9], [0, 0.8, 0]);
+    await T.beat(0, async () => {
+      for (const [x, z] of [[4, 2], [5, -4], [-5, -4], [-5, 2]]) { await T.walk(avi, x, z, 3.6); T.say(avi, 'דינג דינג! 🔔', 0.9); }
+    });
+    await T.beat(1, async () => {
+      await T.walk(avi, 1, 1, 3.6);
+      T.hold(bike, null); bike.rotation.z = Math.PI / 2; bike.position.set(1.4, 0.05, 1);
+      T.anim(avi, 'sad'); T.say(avi, 'אאוץ׳! הברך...', 2.2); await T.wait(2);
+      T.say(avi, 'אני לא מוותר!', 2);
+      await T.walk(dad, 2.2, 1.6, 2);
+      T.say(dad, 'נוריד את המושב 🔧', 2.2); await T.wait(2);
+      bike.rotation.z = 0; T.hold(bike, avi);
+      T.cam([0, 5, 10], [0, 0.8, -1]);
+      T.say(avi, 'אחרי שבוע... בלי ידיים! 🙌', 2.2);
+      await T.walk(avi, 6, -2, 4);
+      T.cam([-5, 3.4, -6], [-9.5, 4, -13.6]);
+      T.say(mom, 'תחזיק את הכידון!', 2.8);
+    });
+  },
+
+  // העוגיות של סבתא שושנה
+  async cookies(T) {
+    const shosh = T.actor('סבתא שושנה', { ...GRANDMA, shirt: '#d98b8b', x: -9.5, y: 4.2, z: -13.6, facing: Math.PI / 2 });
+    const kids = [T.actor('אבי', { ...AVI, x: -2, z: 3 }), T.actor('נועה', { ...NOA, x: 0, z: 3.5 }), T.actor('יניב', { ...YANIV, x: 2, z: 3 })];
+    const tray = T.add(PROPS.cookies()); T.hold(tray, shosh);
+    T.cam([-6, 5, -5], [-9.5, 4, -13.6]);
+    await T.beat(0, async () => {
+      T.say(shosh, 'העוגיות מוכנות! 🍪', 2.4); await T.wait(2.2);
+      T.cam([0, 2.2, 7], [0, 1, 2]);
+      for (const k of kids) T.face(k, -9.5, -13);
+      T.say(kids[1], 'מריחים את זה?!', 2);
+    });
+    await T.beat(1, async () => {
+      T.cam([-5, 3, -6], [-9, 1.5, -12]);
+      for (const k of kids) T.walk(k, -9.5 + Math.random(), -11.5, 3.6);
+      await T.wait(2.4);
+      T.say(kids[0], 'טוק טוק!', 1.4); await T.wait(1.2);
+      T.say(shosh, 'רק אחרי שתשטפו ידיים!', 2.6); await T.wait(2.6);
+      for (const k of kids) T.walk(k, -6 - Math.random(), -10.5, 3.6);
+      T.say(kids[2], 'שוטפים! 🚰', 1.6); await T.wait(1.8);
+      T.cam([-6.5, 4.4, -9], [-9.5, 4, -13.4]);
+      T.say(kids[1], 'ממממ... 😋', 2); T.anim(kids[0], 'cheer');
+    });
+  },
+
+  // המפתח בתעלה
+  async key(T) {
+    const moshe = T.actor('משה', { ...MOSHE, x: 2, z: 2 });
+    const noa = T.actor('נועה', { ...NOA, x: 9, z: 3 });
+    const drain = T.add(PROPS.drain()); drain.position.set(-2, 0.05, -3);
+    const key = T.add(PROPS.key()); T.hold(key, moshe); key.userData.holdY = 1.05;
+    T.cam([1, 2.4, 4], [-1, 0.8, -2]);
+    await T.beat(0, async () => {
+      await T.walk(moshe, -2, -2.2, 1.6);
+      T.say(moshe, 'הדלת נעולה... יש לי מפתח 🔑', 2.6);
+    });
+    await T.beat(1, async () => {
+      await T.wait(0.8);
+      T.hold(key, null); await T.tween(key, { y: -0.4, z: -3 }, 0.6);
+      T.say(moshe, 'לא! המפתח נפל!', 2);
+      moshe.root.rotation.x = 0; T.anim(moshe, 'sad');
+      await T.wait(1.6); T.say(moshe, 'היד שלי קצרה מדי...', 2.2); await T.wait(1.6);
+      await T.walk(noa, -1.2, -2.2, 3);
+      const mag = T.add(PROPS.magnet()); mag.position.set(-1.8, 0.8, -3);
+      T.say(noa, 'מגנט מהמקרר! 🧲', 2.2);
+      for (let i = 1; i <= 3; i++) { await T.tween(mag, { y: 0.1 }, 0.6); T.say(noa, `ניסיון ${i}`, 1); if (i === 3) key.position.set(-1.8, -0.05, -3); await T.tween(mag, { y: 0.8 }, 0.6); }
+      key.position.set(-1.8, 0.7, -3);
+      T.anim(moshe, 'cheer'); T.anim(noa, 'cheer'); T.say(moshe, 'הוא עלה! תודה! 🎉', 2.6);
+    });
+  },
+
+  // היום הראשון בכיתה ג'
+  async firstday(T) {
+    const board = T.add(PROPS.chalkboard('רותי')); board.position.set(0, 1.6, -7.5);
+    const desks = [[-2, -4], [0, -4], [2, -4], [-2, -2.2], [0, -2.2], [2, -2.2]];
+    for (const [x, z] of desks) { const d = T.add(PROPS.table(1, 0.6)); d.position.set(x, 0, z); }
+    const ruti = T.actor('המורה רותי', { ...MOM, shirt: '#5b8def', x: 1.6, z: -6.6, facing: Math.PI / 2 });
+    const dana = T.actor('דנה', { ...DANA, x: -9, z: 6 });
+    const others = [T.actor('אבי', { ...AVI, x: 2, z: -1.4, facing: -Math.PI / 2 }), T.actor('נועה', { ...NOA, x: -2, z: -3.2, facing: -Math.PI / 2 }), T.actor('יניב', { ...YANIV, x: 2, z: -3.2, facing: -Math.PI / 2 })];
+    const bag = T.add(PROPS.book('#2f7de0')); T.hold(bag, dana);
+    T.cam([-6, 2.4, 9], [-8, 1, 5]);
+    await T.beat(0, async () => {
+      T.anim(dana, 'cheer'); T.say(dana, 'היום הראשון בכיתה ג׳! 🎒', 2.6); await T.wait(2.4);
+      T.cam([0, 4, 6], [0, 1, -3]);
+      await T.walk(dana, 0, -1.4, 2.6); T.face(dana, 0, -7); T.remove(bag);
+    });
+    await T.beat(1, async () => {
+      T.cam([0, 2.6, 3], [0, 1.4, -6]);
+      T.say(ruti, 'השנה נקרא הרבה ספרים 📚', 2.8); await T.wait(2.8);
+      T.anim(dana, 'lob'); T.say(dana, 'אפשר להתחיל כבר היום?', 2.6); await T.wait(2.4);
+      for (const k of others) T.anim(k, 'cheer');
+      T.say(others[0], 'חחח 😄', 1.4);
+      T.say(ruti, 'בטח שאפשר! 😊', 2.4);
+    });
+  },
+
+  // הגוזל שנפל מהקן
+  async chick(T) {
+    const tree = T.add(PROPS.tree()); tree.position.set(-6, 0, -5);
+    const nest = T.add(PROPS.nest()); nest.position.set(-5.4, 2.8, -4.6);
+    const chick = T.add(PROPS.chick()); chick.position.set(-4.6, 0.02, -3.4);
+    const noa = T.actor('נועה', { ...NOA, x: 0, z: 2 });
+    const shimon = T.actor('שמעון', { ...MAN, x: 10, z: 4 });
+    T.cam([-2.6, 1.6, -0.4], [-4.6, 0.3, -3.4]);
+    await T.beat(0, async () => {
+      await T.walk(noa, -4, -2.6, 1.6);
+      T.say(noa, 'גוזל קטן! 🐣', 2.2);
+      for (let i = 0; i < 4; i++) { chick.rotation.y = Math.sin(i) * 0.6; await T.wait(0.4); }
+    });
+    await T.beat(1, async () => {
+      T.cam([-1, 3, 2], [-5, 1.8, -4]);
+      T.say(noa, 'הקן גבוה מדי... שמעון!', 2.4);
+      await T.walk(shimon, -4.2, -3.8, 2.4);
+      const ladder = T.add(PROPS.ladder(2.6)); ladder.position.set(-4.9, 0, -4.1); ladder.rotation.x = 0.12;
+      T.hold(chick, shimon); chick.userData.holdY = 1.1;
+      await T.tween(shimon.root, { y: 1.2 }, 1); shimon.pos.y = 1.2;
+      T.hold(chick, null); chick.position.set(-5.4, 2.85, -4.6);
+      await T.tween(shimon.root, { y: 0 }, 0.9); shimon.pos.y = 0;
+      const bird = T.add(PROPS.chick()); bird.scale.setScalar(1.8); bird.position.set(-9, 5, -6);
+      const worm = T.add(PROPS.worm()); worm.position.set(-9, 5.2, -5.8);
+      T.cam([-2.4, 3.2, -1], [-5.4, 2.8, -4.6]);
+      await Promise.all([T.tween(bird, { x: -5.6, y: 2.9, z: -4.4 }, 2), T.tween(worm, { x: -5.6, y: 3.15, z: -4.2 }, 2)]);
+      T.anim(noa, 'cheer'); T.say(noa, 'אמא ציפור הגיעה! 👏', 2.6);
+    });
+  },
+
+  // החלון השבור
+  async window(T) {
+    const win = T.add(PROPS.window()); win.position.set(-6, 1.6, -9.2);
+    const yaniv = T.actor('יניב', { ...YANIV, x: -3, z: 1.5, facing: -Math.PI / 2 });
+    const kids = [T.actor('אבי', { ...AVI, x: 1, z: 2 }), T.actor('נועה', { ...NOA, x: 2.5, z: 0.6 })];
+    const cohen = T.actor('מר כהן', { ...GRANDPA, hair: '#555', x: -6, z: -10.6, facing: Math.PI / 2 });
+    cohen.root.visible = false;
+    T.cam([-1, 3, 6], [-4, 1.2, -3]);
+    await T.beat(0, async () => {
+      T.face(yaniv, -6, -9.2); T.anim(yaniv, 'lob');
+      await T.kick(-3, 1, -6, -9, 2.2, 1);
+      win.getObjectByName('glass').visible = false;
+      T.add(PROPS.shards(-6, 0, -8.8));
+      T.say(yaniv, 'אוי לא! 😱', 1.8); C_shake();
+      for (const k of kids) T.walk(k, 14, 6, 4);
+      await T.wait(1.2);
+    });
+    await T.beat(1, async () => {
+      T.say(yaniv, 'אני לא בורח.', 2);
+      await T.walk(yaniv, -6, -8.2, 1.6);
+      cohen.root.visible = true; await T.walk(cohen, -6, -8.9, 1);
+      T.cam([-4, 1.8, -5.2], [-6, 1.3, -8.6]);
+      T.face(yaniv, -6, -9);
+      T.say(yaniv, 'סליחה, זה אני ששברתי את החלון', 3); await T.wait(3);
+      T.say(cohen, 'תודה שאמרת את האמת 🙂', 2.8); await T.wait(2.8);
+      const broom = T.add(PROPS.broom()); T.hold(broom, yaniv); broom.userData.holdY = 0;
+      T.say(yaniv, 'אני אעזור לנקות 🧹', 2.4); await T.wait(2);
+      T.anim(cohen, 'cheer'); T.anim(yaniv, 'cheer');
+    });
+  },
+
+  // המדבקה האחרונה
+  async album(T) {
+    const avi = T.actor('אבי', { ...AVI, x: -1, z: 1, facing: 0 });
+    const sasha = T.actor('סשה', { ...SASHA, x: 1.2, z: 1, facing: Math.PI });
+    const kids = [T.actor('נועה', { ...NOA, x: -4, z: -2 }), T.actor('יניב', { ...YANIV, x: 4, z: -2.5 })];
+    const album = T.add(PROPS.book('#1f5fa8')); T.hold(album, avi);
+    T.cam([0, 2, 4.5], [0, 1, 1]);
+    await T.beat(0, async () => {
+      T.say(kids[0], 'יש לי מדבקה של השוער!', 2.2); await T.wait(1.4);
+      T.say(avi, 'חסרה לי רק מדבקה אחת... 😕', 2.6);
+    });
+    await T.beat(1, async () => {
+      T.say(sasha, 'יש לי שתיים של אותו שחקן', 2.4); await T.wait(2.4);
+      T.say(avi, 'אתה רוצה להחליף?', 2); await T.wait(2);
+      T.say(sasha, '...כן! 🤝', 1.8); await T.wait(1.6);
+      const st1 = T.add(PROPS.sign('⚽', '#fff', '#222', 0.18, 0.24)); st1.position.set(0.6, 1.2, 1); 
+      await T.tween(st1, { x: -0.6 }, 0.8); T.remove(st1);
+      T.say(avi, 'בזהירות...', 1.4); await T.wait(1.4);
+      T.anim(avi, 'cheer'); T.say(avi, 'האלבום מלא!!! 🏆', 2.6);
+      for (const k of kids) T.anim(k, 'cheer');
+    });
+  },
+
+  // הקפיצה הגדולה
+  async pool(T) {
+    const pool = T.add(PROPS.pool()); pool.position.set(0, 0, -3);
+    const dana = T.actor('דנה', { ...DANA, x: 3, z: 1 });
+    const guard = T.actor('המציל', { ...MAN, shirt: '#e53935', x: -6, z: 1 });
+    const kids = [T.actor('אבי', { ...AVI, x: -2, z: 1.6 }), T.actor('נועה', { ...NOA, x: 0, z: 1.8 })];
+    T.cam([0, 4, 8], [0, 1, -3]);
+    await T.beat(0, async () => {
+      T.say(kids[0], 'המים קרים! 🥶', 2);
+      dana.pos.set(2.8, 0, -6.6); T.walk(dana, 2.8, -6.2, 1);
+      dana.pos.y = 2.4; T.face(dana, 2.8, -3);
+      T.cam([6, 3.2, -1], [2.8, 2.4, -5.8]);
+      T.anim(dana, 'sad'); T.say(dana, 'זה גבוה מדי... 😟', 2.4);
+    });
+    await T.beat(1, async () => {
+      T.say(guard, 'אפשר להתחיל מהמקפצה הנמוכה!', 2.8); await T.wait(2.8);
+      dana.pos.set(-2.8, 0.7, -5.8);
+      T.cam([-6, 2.4, 0], [-2.8, 0.8, -4]);
+      for (let i = 0; i < 2; i++) {
+        await T.tween(dana.root, { z: -4.2, y: 1.2 }, 0.4); dana.root.visible = false;
+        addSplash(T, -2.8, -4); await T.wait(1); dana.root.visible = true; dana.pos.set(-2.8, 0.7, -5.8); dana.root.position.copy(dana.pos);
+      }
+      T.say(dana, 'בסוף היום – מהגבוהה!', 2.2);
+      dana.pos.set(2.8, 2.4, -5.8); dana.root.position.copy(dana.pos);
+      T.cam([6, 3, 1], [2.8, 1.6, -4.5]);
+      await T.wait(1.2);
+      await T.tween(dana.root, { z: -3.8, y: 3 }, 0.4); await T.tween(dana.root, { y: 0.4 }, 0.5);
+      dana.root.visible = false; addSplash(T, 2.8, -3.6);
+      for (const k of [...kids, guard]) T.anim(k, 'cheer');
+      T.say(kids[1], 'כל הכבוד דנה! 👏', 2.4);
+      await T.wait(1.2); dana.root.visible = true; dana.pos.set(3, 0.3, -3.4); dana.root.position.copy(dana.pos); T.anim(dana, 'cheer');
+    });
+  },
+
+  // החמניות של סשה ונועה
+  async sunflowers(T) {
+    const bed = T.add(PROPS.mat('#5a3d22')); bed.position.set(-1, 0.02, -3); bed.scale.set(1.2, 4, 1.2);
+    const sasha = T.actor('סשה', { ...SASHA, x: -3, z: 0 });
+    const noa = T.actor('נועה', { ...NOA, x: 1, z: 0 });
+    const vaad = T.actor('ועד הבית', { ...MAN, x: 4, z: 1.5, facing: Math.PI });
+    T.cam([0, 3, 5], [-0.5, 0.8, -2]);
+    await T.beat(0, async () => { T.say(vaad, 'כל משפחה מקבלת ערוגה! 🌱', 2.8); await T.wait(2); T.anim(sasha, 'cheer'); T.anim(noa, 'cheer'); });
+    const flowers = [];
+    await T.beat(1, async () => {
+      T.walk(sasha, -1.8, -1.8, 1.6); await T.walk(noa, 0, -1.8, 1.6);
+      for (const k of [sasha, noa]) T.face(k, -1, -3);
+      for (let i = 0; i < 4; i++) { const f = T.add(PROPS.stem()); f.position.set(-2 + i * 0.6, 0.05, -3); f.scale.set(1, 0.05, 1); flowers.push(f); }
+      const can = T.add(PROPS.bucket()); T.hold(can, noa); can.userData.holdY = 0.7;
+      T.say(noa, 'משקים כל יום 💧', 2); await T.wait(2);
+      T.say(sasha, 'אחרי שבועיים...', 1.6);
+      for (const f of flowers) f.scale.set(1, 0.4, 1);
+      await T.wait(1.6);
+      T.say(noa, 'סוף הקיץ!', 1.6);
+      for (let i = 0; i < 20; i++) { for (const f of flowers) f.scale.y = Math.min(2.1, f.scale.y + 0.09); await T.wait(0.06); }
+      const dad = T.actor('אבא של סשה', { ...MAN, shirt: '#7a9cc6', x: 1.2, z: -3 });
+      T.cam([2, 2.4, 3], [-0.5, 1.6, -3]);
+      T.say(dad, 'הן יותר גבוהות ממני! 🌻', 2.8); T.anim(sasha, 'cheer'); T.anim(noa, 'cheer');
+    });
+  },
+
+  // ההצגה במקלט
+  async play(T) {
+    const stage = T.add(PROPS.curtain()); stage.position.set(14.5, 0, 3.5); stage.rotation.y = -Math.PI / 2;
+    const avi = T.actor('אבי', { ...AVI, x: 4, z: 2 });
+    const noa = T.actor('נועה', { ...NOA, x: 5, z: 3 });
+    const dana = T.actor('דנה', { ...DANA, x: 3, z: 3.6 });
+    T.cam([6, 3, 7], [8, 1, 3]);
+    await T.beat(0, async () => {
+      T.say(dana, 'בואו נעלה הצגה! 🎭', 2.4); await T.wait(2);
+      T.say(avi, 'על מלך שאיבד את הכתר!', 2.4);
+    });
+    await T.beat(1, async () => {
+      const crown = T.add(PROPS.crown()); T.hold(crown, avi); crown.userData.holdY = 1.5;
+      T.say(noa, 'ואני המכשפה! 🧙‍♀️', 2); await T.wait(1.6);
+      T.say(dana, 'תפרתי תחפושות מסדינים', 2.2); await T.wait(2);
+      for (let i = 0; i < 4; i++) { const p = T.actor('הורה', { ...[MOM, MAN, WOMAN, GRANDPA][i], x: 10, z: 1.5 + i * 1, facing: 0 }); const ch = T.add(PROPS.chair(T.A)); ch.position.set(9.6, 0, 1.5 + i); ch.rotation.y = Math.PI / 2; }
+      T.cam([7, 2.4, 3.5], [14, 1.2, 3.5]);
+      T.walk(avi, 13.6, 3, 2); T.walk(noa, 13.6, 4.4, 2); await T.wait(2.4);
+      T.face(avi, 9, 3); T.face(noa, 9, 3.5);
+      T.say(avi, 'איפה הכתר שלי?! 👑', 2.2); await T.wait(2);
+      T.say(noa, 'חה חה חה!', 1.8); await T.wait(1.8);
+      T.anim(avi, 'cheer'); T.anim(noa, 'cheer'); T.say(dana, 'סוף! 👏👏👏', 2.4);
+    });
+  },
+
+  // האוטו של הגלידה
+  async icecream(T) {
+    const truck = T.add(PROPS.truck()); truck.position.set(-3, 0, -6); truck.rotation.y = Math.PI / 2;
+    const kids = [T.actor('נועה', { ...NOA, x: 6, z: 4 }), T.actor('אבי', { ...AVI, x: 8, z: 3 })];
+    const dani = T.actor('דני', { ...KID_SMALL, x: 5, z: 6 });
+    T.cam([3, 3.4, 6], [-1, 1, -4]);
+    await T.beat(0, async () => {
+      T.say(kids[1], '♪ האוטו של הגלידה! ♪', 2.4);
+      T.walk(kids[0], -0.4, -4.2, 3.4); T.walk(kids[1], 0.6, -4.6, 3.4); await T.walk(dani, 0.6, -2.6, 2.6);
+    });
+    await T.beat(1, async () => {
+      const ps = T.add(PROPS.popsicle()); T.hold(ps, kids[0]); ps.userData.holdY = 1.1;
+      T.cam([2.2, 1.8, 0.5], [0, 1, -3]);
+      T.say(dani, 'אין לי כסף... 😢', 2.4); T.anim(dani, 'sad');
+      await T.walk(dani, 2.4, -1.8, 1); await T.wait(1.4);
+      await T.walk(kids[0], 1.6, -2, 2);
+      T.face(kids[0], dani.pos.x, dani.pos.z); T.face(dani, kids[0].pos.x, kids[0].pos.z);
+      const half = T.add(PROPS.popsicle()); T.hold(half, dani); half.userData.holdY = 0.9;
+      T.say(kids[0], 'חברים מתחלקים 😊', 2.6); await T.wait(2.4);
+      T.anim(dani, 'cheer'); T.say(dani, 'הלשון שלי צהובה! 😛', 2.6);
+    });
+  },
+
+  // שחמט עם סבא
+  async chess(T) {
+    const bench = T.add(PROPS.table(1.2, 0.6)); bench.scale.set(1, 0.65, 1); bench.position.set(-2, 0, -2);
+    const board = T.add(PROPS.chessboard()); board.position.set(-2, 0.5, -2);
+    const sasha = T.actor('סשה', { ...SASHA, x: -2, z: -1.1, facing: -Math.PI / 2 });
+    const saba = T.actor('סבא', { ...GRANDPA, x: -2, z: -2.9, facing: Math.PI / 2 });
+    T.cam([0.6, 1.8, 0.6], [-2, 0.6, -2]);
+    await T.beat(0, async () => { T.say(saba, 'זה הפרש, הוא קופץ ככה ♞', 3); });
+    await T.beat(1, async () => {
+      T.say(saba, 'שח מט!', 1.6); await T.wait(1.4);
+      T.anim(sasha, 'sad'); T.say(sasha, 'הפסדתי שוב... אני רוצה להפסיק 😤', 2.8); await T.wait(2.8);
+      T.say(saba, 'גם אני הפסדתי הרבה כשהייתי קטן', 3); await T.wait(3);
+      T.say(saba, 'כל הפסד מלמד משהו', 2.4); await T.wait(2.4);
+      T.say(sasha, 'אחרי חודש...', 1.6); await T.wait(1.6);
+      T.say(sasha, 'שח מט! ♚', 2); await T.wait(1.4);
+      T.anim(sasha, 'cheer'); T.anim(saba, 'cheer');
+      T.say(saba, 'כל הכבוד! 😄', 2.6);
     });
   },
 };

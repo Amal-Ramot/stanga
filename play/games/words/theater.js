@@ -345,6 +345,102 @@ export const PROPS = {
     if (A.models.plastic_monobloc_chair_01) return fitModel(A.models.plastic_monobloc_chair_01.clone(), { height: 0.85 });
     return mesh(new THREE.BoxGeometry(0.45, 0.45, 0.45), mat('#eee'), 0, 0.22, 0);
   },
+  kite() {
+    const g = new THREE.Group();
+    const sh = new THREE.Shape(); sh.moveTo(0, 0.5); sh.lineTo(0.35, 0); sh.lineTo(0, -0.6); sh.lineTo(-0.35, 0); sh.closePath();
+    const k = new THREE.Mesh(new THREE.ShapeGeometry(sh), new THREE.MeshStandardMaterial({ color: '#e8414a', side: THREE.DoubleSide })); g.add(k);
+    const k2 = new THREE.Mesh(new THREE.ShapeGeometry(sh), new THREE.MeshStandardMaterial({ color: '#f2c230', side: THREE.DoubleSide })); k2.scale.set(0.5, 0.5, 1); k2.position.z = 0.01; g.add(k2);
+    for (let i = 0; i < 5; i++) g.add(mesh(new THREE.BoxGeometry(0.12, 0.05, 0.01), mat(i % 2 ? '#3a7be0' : '#f2c230'), Math.sin(i) * 0.05, -0.7 - i * 0.18, 0));
+    return g;
+  },
+  tree() {
+    const g = new THREE.Group();
+    g.add(mesh(new THREE.CylinderGeometry(0.15, 0.22, 3, 10), mat('#6b4a2b'), 0, 1.5, 0));
+    for (const [x, y, z, r] of [[0, 3.4, 0, 1.2], [0.7, 3, 0.2, 0.8], [-0.7, 3.1, -0.1, 0.9]]) g.add(mesh(new THREE.SphereGeometry(r, 12, 10), mat('#3f7a35'), x, y, z));
+    return g;
+  },
+  stick(len = 2.2) { const m = mesh(new THREE.CylinderGeometry(0.025, 0.03, len, 6), mat('#8a6a3c'), 0, 0, 0); return m; },
+  produce(c) { const g = new THREE.Group(); for (let i = 0; i < 6; i++) g.add(mesh(new THREE.SphereGeometry(0.09, 10, 8), mat(c, { roughness: 0.5 }), (i % 3 - 1) * 0.2, 1.05 + Math.floor(i / 3) * 0.12, (Math.floor(i / 3) - 0.5) * 0.15)); return g; },
+  basket() { const g = new THREE.Group(); g.add(mesh(new THREE.CylinderGeometry(0.2, 0.15, 0.22, 14, 1, true), mat('#b88a4a', { side: THREE.DoubleSide }), 0, 0, 0)); g.add(mesh(new THREE.SphereGeometry(0.08, 8, 8), mat('#4caf50'), 0.05, 0.08, 0)); g.add(mesh(new THREE.SphereGeometry(0.07, 8, 8), mat('#e53935'), -0.06, 0.08, 0.04)); return g; },
+  pita() { const m = mesh(new THREE.SphereGeometry(0.12, 12, 8), mat('#e3b97a')); m.scale.set(1, 0.45, 0.8); return m; },
+  snail() {
+    const g = new THREE.Group();
+    const body = mesh(new THREE.CapsuleGeometry(0.04, 0.16, 4, 8), mat('#b8a27a'), 0, 0.04, 0); body.rotation.x = Math.PI / 2; g.add(body);
+    const shell = mesh(new THREE.TorusGeometry(0.07, 0.04, 8, 16), mat('#a0643a'), 0, 0.12, -0.02); shell.rotation.y = Math.PI / 2; g.add(shell);
+    for (const s of [-1, 1]) g.add(mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.08, 4), mat('#b8a27a'), s * 0.02, 0.09, 0.1));
+    return g;
+  },
+  leaf() { const m = mesh(new THREE.SphereGeometry(0.45, 12, 8), mat('#4f9a3a')); m.scale.set(1, 0.08, 0.6); return m; },
+  bike(c = '#c62828') {
+    const g = new THREE.Group(), m = mat('#222');
+    for (const z of [-0.45, 0.45]) { const w = mesh(new THREE.TorusGeometry(0.3, 0.04, 8, 20), m, 0, 0.32, z); w.rotation.y = Math.PI / 2; g.add(w); }
+    const f = mesh(new THREE.BoxGeometry(0.05, 0.05, 0.9), mat(c, { metalness: 0.4, roughness: 0.4 }), 0, 0.55, 0); g.add(f);
+    const st = mesh(new THREE.BoxGeometry(0.05, 0.4, 0.05), mat(c), 0, 0.5, -0.2); st.rotation.x = 0.3; g.add(st);
+    g.add(mesh(new THREE.BoxGeometry(0.12, 0.04, 0.22), mat('#333'), 0, 0.72, -0.25));
+    g.add(mesh(new THREE.BoxGeometry(0.5, 0.04, 0.04), mat('#999', { metalness: 0.7 }), 0, 0.85, 0.42));
+    g.add(mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.3, 6), mat(c), 0, 0.7, 0.42));
+    return g;
+  },
+  cookies() { const g = PROPS.tray(); g.children.slice(1).forEach((c) => g.remove(c)); for (let i = 0; i < 6; i++) { const c = mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.02, 12), mat('#c98c4a'), (i % 3 - 1) * 0.12, 0.03, (Math.floor(i / 3) - 0.5) * 0.12); g.add(c); g.add(mesh(new THREE.SphereGeometry(0.012, 6, 6), mat('#3b2414'), c.position.x, 0.045, c.position.z)); } return g; },
+  key() { const g = new THREE.Group(); g.add(mesh(new THREE.TorusGeometry(0.035, 0.01, 6, 12), mat('#d4a83a', { metalness: 0.8, roughness: 0.3 }), 0, 0.08, 0)); g.add(mesh(new THREE.BoxGeometry(0.012, 0.1, 0.01), mat('#d4a83a', { metalness: 0.8 }), 0, 0.02, 0)); return g; },
+  drain() { const g = new THREE.Group(); g.add(mesh(new THREE.BoxGeometry(1.4, 0.02, 0.5), mat('#1a1a1a'), 0, 0.01, 0)); for (let i = -6; i <= 6; i++) g.add(mesh(new THREE.BoxGeometry(0.03, 0.03, 0.5), mat('#777', { metalness: 0.6 }), i * 0.1, 0.025, 0)); return g; },
+  magnet() { const m = mesh(new THREE.TorusGeometry(0.05, 0.02, 6, 12, Math.PI), mat('#d32f2f')); return m; },
+  chalkboard(text) { const m = PROPS.sign(text, '#2f4f3a', '#f4f0e0', 2.6, 1.3); return m; },
+  chick() {
+    const g = new THREE.Group();
+    g.add(mesh(new THREE.SphereGeometry(0.07, 12, 10), mat('#ffd84a'), 0, 0.07, 0));
+    g.add(mesh(new THREE.SphereGeometry(0.05, 10, 8), mat('#ffd84a'), 0, 0.15, 0.04));
+    const beak = mesh(new THREE.ConeGeometry(0.015, 0.035, 6), mat('#f08a1a'), 0, 0.15, 0.1); beak.rotation.x = Math.PI / 2; g.add(beak);
+    return g;
+  },
+  nest() { const m = mesh(new THREE.TorusGeometry(0.18, 0.07, 8, 16), mat('#8a6a3c')); m.rotation.x = Math.PI / 2; return m; },
+  worm() { const m = mesh(new THREE.CapsuleGeometry(0.012, 0.08, 4, 6), mat('#d77a7a')); m.rotation.z = Math.PI / 2; return m; },
+  // חלון של בניין שאפשר לשבור (זכוכית + רסיסים)
+  window() {
+    const g = new THREE.Group();
+    g.add(mesh(new THREE.BoxGeometry(1.4, 1.2, 0.06), mat('#f1ece0'), 0, 0, -0.04));
+    const glass = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.0), new THREE.MeshStandardMaterial({ color: '#9ec9e6', roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.75 }));
+    glass.position.z = 0.01; glass.name = 'glass'; g.add(glass);
+    return g;
+  },
+  shards(x, y, z) {
+    const g = new THREE.Group();
+    for (let i = 0; i < 12; i++) { const s = mesh(new THREE.TetrahedronGeometry(0.06), mat('#bfe3f7', { transparent: true, opacity: 0.8 }), (Math.random() - 0.5) * 1, 0.02, (Math.random() - 0.5) * 0.8); s.rotation.set(Math.random() * 3, Math.random() * 3, 0); g.add(s); }
+    g.position.set(x, y, z);
+    return g;
+  },
+  broom() { const g = new THREE.Group(); g.add(mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.2, 6), mat('#a07a4a'), 0, 0.6, 0)); g.add(mesh(new THREE.BoxGeometry(0.3, 0.15, 0.08), mat('#c9a24a'), 0, 0.05, 0)); return g; },
+  pool(w = 8, d = 5) {
+    const g = new THREE.Group();
+    g.add(mesh(new THREE.BoxGeometry(w + 0.6, 0.3, d + 0.6), mat('#e9eef2'), 0, 0.15, 0));
+    const water = new THREE.Mesh(new THREE.BoxGeometry(w, 0.05, d), new THREE.MeshStandardMaterial({ color: '#3fb0e0', roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.9 }));
+    water.position.y = 0.3; water.receiveShadow = true; g.add(water);
+    // מקפצה נמוכה וגבוהה
+    g.add(mesh(new THREE.BoxGeometry(0.5, 0.05, 1.4), mat('#2f7de0'), -w / 2 + 1.2, 0.7, -d / 2 - 0.2));
+    g.add(mesh(new THREE.BoxGeometry(0.3, 0.7, 0.3), mat('#ccc'), -w / 2 + 1.2, 0.35, -d / 2 - 0.8));
+    g.add(mesh(new THREE.BoxGeometry(0.5, 0.05, 1.6), mat('#e8414a'), w / 2 - 1.2, 2.4, -d / 2 - 0.2));
+    g.add(mesh(new THREE.BoxGeometry(0.3, 2.4, 0.3), mat('#ccc'), w / 2 - 1.2, 1.2, -d / 2 - 0.9));
+    return g;
+  },
+  stem() { const g = new THREE.Group(); const st = mesh(new THREE.CylinderGeometry(0.03, 0.04, 1, 6), mat('#3f8a35'), 0, 0.5, 0); g.add(st); const h = mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.06, 16), mat('#f2c230'), 0, 1.02, 0.04); h.rotation.x = 1.2; h.name = 'head'; g.add(h); const c = mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.07, 12), mat('#5a3a1b'), 0, 1.04, 0.06); c.rotation.x = 1.2; g.add(c); return g; },
+  crown() { const g = new THREE.Group(); g.add(mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.08, 12, 1, true), mat('#f2c230', { metalness: 0.7, roughness: 0.3, side: THREE.DoubleSide }))); for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2; g.add(mesh(new THREE.ConeGeometry(0.025, 0.08, 4), mat('#f2c230', { metalness: 0.7 }), Math.cos(a) * 0.12, 0.08, Math.sin(a) * 0.12)); } return g; },
+  curtain() { const g = new THREE.Group(); for (const s of [-1, 1]) g.add(mesh(new THREE.BoxGeometry(1.5, 2.6, 0.08), mat('#a3262c'), s * 2, 1.3, 0)); g.add(mesh(new THREE.BoxGeometry(5.6, 0.4, 0.1), mat('#7a1c20'), 0, 2.7, 0)); g.add(mesh(new THREE.BoxGeometry(5, 0.25, 2), mat('#8a6a45'), 0, 0.12, 1)); return g; },
+  truck() {
+    const g = new THREE.Group();
+    g.add(mesh(new THREE.BoxGeometry(2.2, 1.5, 3.6), mat('#f4f1ea'), 0, 1.05, 0));
+    g.add(mesh(new THREE.BoxGeometry(2.1, 1.0, 1.2), mat('#f4f1ea'), 0, 0.8, 2.3));
+    g.add(mesh(new THREE.BoxGeometry(2.0, 0.5, 0.05), mat('#9ec9e6', { roughness: 0.1 }), 0, 1.1, 2.92));
+    for (const [x, z] of [[-1.05, -1.2], [1.05, -1.2], [-1.05, 2.2], [1.05, 2.2]]) { const w = mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.2, 14), mat('#222'), x, 0.35, z); w.rotation.z = Math.PI / 2; g.add(w); }
+    const sg = PROPS.sign('גלידה 🍦', '#ff7eb6', '#fff', 1.8, 0.6); sg.position.set(1.12, 1.3, 0); sg.rotation.y = Math.PI / 2; g.add(sg);
+    return g;
+  },
+  popsicle(c = '#f7e26b') { const g = new THREE.Group(); g.add(mesh(new THREE.BoxGeometry(0.07, 0.14, 0.03), mat(c, { roughness: 0.4 }), 0, 0.1, 0)); g.add(mesh(new THREE.BoxGeometry(0.015, 0.08, 0.01), mat('#c9a16b'), 0, 0, 0)); return g; },
+  chessboard() {
+    const g = new THREE.Group();
+    for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) g.add(mesh(new THREE.BoxGeometry(0.06, 0.01, 0.06), mat((i + j) % 2 ? '#3a2a1a' : '#f0e0c0'), (i - 3.5) * 0.06, 0, (j - 3.5) * 0.06));
+    for (let i = 0; i < 8; i++) { g.add(mesh(new THREE.CylinderGeometry(0.012, 0.016, 0.05, 8), mat('#f8f8f0'), (i - 3.5) * 0.06, 0.03, -0.18)); g.add(mesh(new THREE.CylinderGeometry(0.012, 0.016, 0.05, 8), mat('#222'), (i - 3.5) * 0.06, 0.03, 0.18)); }
+    return g;
+  },
   sparkle() {
     const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.12), new THREE.MeshBasicMaterial({ color: '#fff27a' }));
     return m;
