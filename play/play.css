@@ -1,4 +1,4 @@
-/* סטנגה קוראים – תוספות עיצוב מעל style.css של המשחק */
+/* מגרש המשחקים – עיצוב (מעל style.css של המשחק) */
 :root { --ok: #1f8a4c; }
 
 /* ---------- תפריט ---------- */
@@ -29,14 +29,14 @@
 .rules kbd { padding: 1px 6px; border: 1.5px solid #555; border-radius: 4px; background: #fff; font-size: .85em; }
 
 /* ---------- לוח עליון ---------- */
-#hud .hud-home {
+#w-hud .hud-home {
   position: absolute; top: max(8px, env(safe-area-inset-top)); left: 12px; pointer-events: auto;
   width: 40px; height: 40px; font-size: 20px; background: var(--cream); border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink);
 }
-#hud .board .mid { font-size: 13px; }
-#hud .board .p2 b { font-size: 16px !important; letter-spacing: 1px; min-width: 0; }
-#hud #hint { width: fit-content; max-width: calc(100% - 100px); margin: 6px auto 0; padding: 4px 14px; border-radius: 99px; color: #fff; font-weight: 700; font-size: 15px; background: rgba(26, 15, 46, .78); text-align: center; }
-#hud #hint:empty { display: none; }
+#w-hud .board .mid { font-size: 13px; }
+#w-hud .board .p2 b { font-size: 16px !important; letter-spacing: 1px; min-width: 0; }
+#w-hud #hint { width: fit-content; max-width: calc(100% - 100px); margin: 6px auto 0; padding: 4px 14px; border-radius: 99px; color: #fff; font-weight: 700; font-size: 15px; background: rgba(26, 15, 46, .78); text-align: center; }
+#w-hud #hint:empty { display: none; }
 
 /* ---------- סובבו את הטלפון ---------- */
 #rotate { z-index: 35; background: rgba(26, 15, 46, .92); color: #fff; text-align: center; }
@@ -67,3 +67,38 @@ body.nikud .panel.win .over-text, body.nikud .panel.win .over-text * { font-fami
 body.nikud .over-text { font-size: 26px; line-height: 50px; }
 body.nikud #story-lbl { font-family: 'Noto Sans Hebrew', 'Rubik', sans-serif; }
 .grade-row .seg button { font-size: 18px; }
+
+/* לוח עליון במשחק (כמו ה-HUD של המשחק הרגיל) */
+#w-hud { position: fixed; top: 0; left: 0; right: 0; z-index: 10; pointer-events: none; padding: max(8px, env(safe-area-inset-top)) 12px 0; }
+#w-hud .board { border-width: 2px; box-shadow: 3px 3px 0 rgba(0,0,0,.5); opacity: .95; }
+#w-hud .board .side { padding: 2px 10px; font-size: 13px; gap: 8px; }
+#w-hud .board b { font-size: 24px; min-width: 26px; line-height: 1.1; }
+
+/* ===================== בחירת דמות ===================== */
+#choose { position: fixed; inset: 0; z-index: 20; pointer-events: none; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: max(18px, env(safe-area-inset-top)) 16px max(22px, env(safe-area-inset-bottom)); }
+.ch-title { font: 900 clamp(34px, 6vw, 58px) 'Secular One', 'Rubik', sans-serif; color: var(--yellow); -webkit-text-stroke: 3px var(--purple); paint-order: stroke fill; text-shadow: 4px 4px 0 var(--ink); }
+.ch-sub { margin-top: -4px; padding: 4px 14px; border-radius: 99px; background: rgba(26, 15, 46, .7); color: #fff; font-weight: 700; font-size: 18px; }
+.ch-sub { order: 0; }
+#choose > .ch-title { margin-bottom: auto; }
+.ch-bar { pointer-events: auto; display: flex; align-items: center; gap: 14px; margin-top: auto; }
+.ch-arrow { width: 64px; height: 64px; border-radius: 50%; border: 3px solid var(--ink); background: var(--cream); box-shadow: 4px 4px 0 var(--ink); font: 900 40px/1 'Rubik', sans-serif; color: var(--ink); }
+.ch-arrow:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--ink); }
+.ch-mid { min-width: 150px; text-align: center; padding: 8px 18px; background: var(--cream); border: 3px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); }
+.ch-mid b { display: block; font: 900 30px 'Rubik', sans-serif; }
+.ch-mid span { font-size: 14px; color: #555; }
+.ch-ok { pointer-events: auto; margin-top: 14px; padding: 12px 34px; font: 900 26px 'Rubik', sans-serif; color: #fff; background: var(--pink); border: 3px solid var(--ink); box-shadow: 5px 5px 0 var(--ink); }
+.ch-ok:active { transform: translate(3px, 3px); box-shadow: 2px 2px 0 var(--ink); }
+
+/* ===================== החצר ===================== */
+#hub-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: max(8px, env(safe-area-inset-top)) 12px 0; pointer-events: none; }
+.hub-title { padding: 6px 14px; background: var(--cream); border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); font: 900 18px 'Rubik', sans-serif; }
+.hub-help { flex: 1; text-align: center; color: #fff; font-weight: 700; font-size: 14px; text-shadow: 0 1px 3px rgba(0,0,0,.8); }
+.hub-char { pointer-events: auto; padding: 6px 12px; background: var(--cream); border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); font: 700 15px 'Rubik', sans-serif; }
+#prompt { position: fixed; z-index: 12; left: 50%; bottom: max(22px, env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; align-items: center; gap: 16px; padding: 12px 14px 12px 18px; background: var(--cream); border: 3px solid var(--ink); box-shadow: 5px 5px 0 var(--ink); max-width: calc(100% - 32px); animation: prin .25s ease-out; }
+@keyframes prin { from { transform: translate(-50%, 20px); opacity: 0; } }
+.pr-text { display: flex; flex-direction: column; }
+.pr-text b { font: 900 22px 'Rubik', sans-serif; }
+.pr-text span { font-size: 14px; color: #444; }
+#pr-go { flex: none; padding: 10px 20px; font: 900 20px 'Rubik', sans-serif; color: #fff; background: var(--pink); border: 3px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); }
+#pr-go:disabled { background: #a49f93; cursor: default; }
+@media (max-width: 700px) { .hub-help { display: none; } }

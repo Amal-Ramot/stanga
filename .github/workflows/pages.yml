@@ -23,9 +23,9 @@ jobs:
       - name: Prepare site
         run: |
           mkdir -p _site
-          cp -r index.html style.css favicon.svg favicon.png js lib assets learn _site/
+          cp -r index.html style.css favicon.svg favicon.png js lib assets learn play _site/
           # מספר גרסה לכל פרסום – כדי שהדפדפן לא ייתקע עם קבצים ישנים
-          sed -i "s/__V__/${GITHUB_SHA::8}/g" _site/index.html _site/learn/index.html
+          sed -i "s/__V__/${GITHUB_SHA::8}/g" _site/index.html _site/play/index.html
           touch _site/.nojekyll
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
