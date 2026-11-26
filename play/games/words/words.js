@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { STORIES } from './stories.js';
 import { STORIES_A } from './stories-a.js';
-import { makeTheater } from './theater.js';
+import { makeTheater, SKIP } from './theater.js';
 import { SCENES } from './scenes.js';
 
 // ההתקדמות נשמרת באותו מקום כמו בגרסה הקודמת (stanga/learn), כדי שלא תאבד
@@ -445,15 +445,16 @@ function finish() {
 function playScene(then) {
   if (C.game !== WORDS) return;
   S.phase = 'scene';
-  $('w-over').classList.add('hidden'); $('w-hud').classList.add('hidden');
+  $('w-over').classList.add('hidden'); $('w-hud').classList.add('hidden'); $('w-menu').classList.add('hidden');
   clearBoard(); if (extrasBuilt) extrasBuilt.visible = false;
   C.kid.root.visible = false;
   const ui = $('scene-ui'); ui.classList.remove('hidden');
   ui.classList.toggle('nikud', hasNikud(S.story));
   $('scene-cap').textContent = '';
-  theater = makeTheater(C, (text) => { const el = $('scene-cap'); el.textContent = text; el.classList.remove('in'); void el.offsetWidth; el.classList.add('in'); });
+  theater = makeTheater(C, S.story, (text) => { const el = $('scene-cap'); el.textContent = text; el.classList.remove('in'); void el.offsetWidth; el.classList.add('in'); });
   theater.then = then;
-  SCENES[S.story.id](theater).catch((e) => console.error(e)).finally(() => endScene(false));
+  const T = theater;
+  SCENES[S.story.id](T).catch((e) => { if (e !== SKIP) console.error(e); }).finally(() => { if (theater === T) endScene(false); });
 }
 function endScene(silent) {
   if (!theater) return;
@@ -545,4 +546,4 @@ function camera(core, vt, aspect) {
 }
 
 // לבדיקות
-window.__words = { get crates() { return crates; }, get page() { return page; }, get S() { return S; }, scene: () => { S.lastStars = 3; playScene(showOver); }, solve: () => { for (const b of page.blanks) b.filled = true; S.filled = page.blanks.length; drawPage(); finish(); } };
+window.__words = { get crates() { return crates; }, get page() { return page; }, get S() { return S; }, scene: () => { S.lastStars = 3; playScene(showOver); }, sceneFor: (id) => { S.story = [...STORIES, ...STORIES_A].find((x) => x.id === id); S.lastStars = 3; playScene(() => {}); }, skip: () => endScene(true), solve: () => { for (const b of page.blanks) b.filled = true; S.filled = page.blanks.length; drawPage(); finish(); } };

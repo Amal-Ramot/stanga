@@ -2,32 +2,38 @@
 // כל סיפור מקבל תסריט (ב-scenes.js): פונקציה אסינכרונית שמזיזה דמויות, מדברת בבועות ומציגה את משפטי הסיפור.
 //
 // כלים לתסריט (T):
-//   T.actor(שם, הגדרות)      – דמות חדשה (מודל, צבעים, גובה, מיקום)
-//   T.walk(דמות, x, z, מהירות) – הליכה (מחכים לה עם await)
-//   T.face(דמות, x, z)       – להסתובב לכיוון נקודה
-//   T.say(דמות, טקסט, שניות) – בועת דיבור
-//   T.caption(טקסט)          – משפט מהסיפור בתחתית המסך
-//   T.anim(דמות, 'cheer'|'sad'|'kick'|'lob')
-//   T.ball(x, z)             – כדור; T.kick(מ-x,z, אל-x,z, גובה, שניות)
-//   T.add(object3D)          – אובייקט לסצנה (יימחק בסוף)
-//   T.cam([x,y,z], [x,y,z])  – זווית מצלמה
-//   T.wait(שניות)
+//   T.beat(i, async () => {...}) – מציג את פסקה i של הסיפור בתחתית המסך, מריץ את הפעולות,
+//                                 ומחכה שיהיה מספיק זמן לקרוא את הפסקה
+//   T.actor(שם, הגדרות)          – דמות (מודל, צבעים, height, x, z, facing)
+//   T.walk(דמות, x, z, מהירות)    – הליכה (await מחכה שתגיע)
+//   T.face(דמות, x, z) · T.say(דמות, טקסט, שניות) · T.anim(דמות, 'cheer'|'sad'|'kick'|'lob')
+//   T.ball(x, z) · T.kick(x0, z0, x1, z1, גובה, שניות) · T.holdBall(דמות) · T.dropBall(x, z)
+//   T.add(אובייקט) · T.remove(אובייקט) · T.hold(אובייקט, דמות) – חפץ בידיים
+//   T.tween(אובייקט, {x, y, z}, שניות) – הזזה חלקה של חפץ
+//   T.cam([x,y,z], [x,y,z]) · T.wait(שניות) · T.rain(true/false) · T.night(true/false)
+//   T.music(true/false) – הרדיו מהמרפסת
+// אם לוחצים "דלג", כל פעולה שמחכים לה זורקת SKIP והתסריט נעצר מעצמו.
 import * as THREE from 'three';
 import { Player, KIDS } from '../../../js/player.js';
 import { fitModel } from '../../../js/assets.js';
 import { BALL } from '../../../js/config.js';
 
-export function makeTheater(C, onCaption) {
-  const actors = [], objects = [], bubbles = [], walks = new Map();
-  let ballObj = null, ballFly = null;
-  const cam = { pos: new THREE.Vector3(0, 8, 12), look: new THREE.Vector3(0, 0, 0) };
-  const T = { skipped: false, cam: (p, l) => { cam.pos.set(...p); cam.look.set(...l); } };
-  const layer = document.getElementById('bubbles-play');
+export const SKIP = Symbol('skip');
 
+export function makeTheater(C, story, onCaption) {
+  const actors = [], objects = [], bubbles = [], walks = new Map(), tweens = new Set();
+  let ballObj = null, ballFly = null, rain = null, night = null;
+  const cam = { pos: new THREE.Vector3(0, 8, 12), look: new THREE.Vector3(0, 0, 0) };
+  const T = { skipped: false, story, A: C.A };
+  const layer = document.getElementById('bubbles-play');
+  // פעולה שמחכים לה זורקת SKIP אחרי דילוג; פעולה שלא מחכים לה – נבלעת בשקט
+  const guard = (p) => { const q = p.then((v) => { if (T.skipped) throw SKIP; return v; }); q.catch(() => {}); return q; };
+
+  T.cam = (p, l) => { cam.pos.set(...p); cam.look.set(...l); };
   T.actor = (name, o) => {
     const k = new Player(C.R.scene, { ...KIDS.p1, name, ...o, model: C.A.kids && C.A.kids[o.model] });
     k.arrow.visible = false; k.ring.visible = false;
-    k.pos.set(o.x || 0, 0, o.z || 0); k.facing = o.facing ?? -Math.PI / 2;
+    k.pos.set(o.x || 0, o.y || 0, o.z || 0); k.facing = o.facing ?? -Math.PI / 2;
     const el = document.createElement('div'); el.className = 'bubble-say'; layer.appendChild(el);
     k.bubble = el; bubbles.push(el);
     k.height = o.height || 1.42;
@@ -35,17 +41,32 @@ export function makeTheater(C, onCaption) {
     return k;
   };
   T.add = (o) => { C.R.scene.add(o); objects.push(o); return o; };
-  T.remove = (o) => { C.R.scene.remove(o); };
-  T.wait = (s) => new Promise((res) => { if (T.skipped) return res(); const t = setTimeout(res, s * 1000); T._timers.push([t, res]); });
+  T.remove = (o) => { C.R.scene.remove(o); o.userData.follow = null; };
+  T.hold = (o, a) => { o.userData.follow = a; };
   T._timers = [];
-  T.walk = (a, x, z, speed = 2.2) => new Promise((res) => { walks.set(a, { to: new THREE.Vector3(x, 0, z), speed, res }); if (T.skipped) res(); });
+  T.wait = (s) => guard(new Promise((res) => { if (T.skipped) return res(); const t = setTimeout(res, s * 1000); T._timers.push([t, res]); }));
+  T.walk = (a, x, z, speed = 2.2) => guard(new Promise((res) => { if (T.skipped) return res(); walks.set(a, { to: new THREE.Vector3(x, a.pos.y, z), speed, res }); }));
   T.face = (a, x, z) => { a.facing = Math.atan2(z - a.pos.z, x - a.pos.x); };
   T.anim = (a, type) => a.play(type);
-  T.say = (a, text, s = 2.4) => {
+  T.say = (a, text, s = 2.6) => {
     a.bubble.textContent = text; a.bubble.classList.add('show');
     clearTimeout(a.sayT); a.sayT = setTimeout(() => a.bubble.classList.remove('show'), s * 1000);
   };
   T.caption = (text) => onCaption(text);
+  // פסקה מהסיפור + פעולות + זמן קריאה
+  T.beat = async (i, fn) => {
+    const text = story.text[i] || '';
+    onCaption(text);
+    const t0 = performance.now();
+    if (fn) await fn();
+    const need = Math.max(3.2, text.length / 13);
+    const left = need - (performance.now() - t0) / 1000;
+    if (left > 0) await T.wait(left);
+  };
+  T.tween = (o, to, s = 1) => guard(new Promise((res) => {
+    if (T.skipped) return res();
+    tweens.add({ o, from: o.position.clone(), to: new THREE.Vector3(to.x ?? o.position.x, to.y ?? o.position.y, to.z ?? o.position.z), t: 0, s, res });
+  }));
   T.ball = (x, z) => {
     if (!ballObj) {
       let inner;
@@ -56,15 +77,54 @@ export function makeTheater(C, onCaption) {
     ballObj.position.set(x, BALL.r, z); ballObj.visible = true;
     return ballObj;
   };
-  T.kick = (x0, z0, x1, z1, h = 0.4, dur = 0.8) => new Promise((res) => {
+  T.kick = (x0, z0, x1, z1, h = 0.4, dur = 0.8) => guard(new Promise((res) => {
     T.ball(x0, z0); ballObj.userData.holder = null; C.SFX.sfxKick(0.5);
+    if (T.skipped) return res();
     ballFly = { t: 0, dur, from: new THREE.Vector3(x0, BALL.r, z0), to: new THREE.Vector3(x1, BALL.r, z1), h, res };
-    if (T.skipped) { ballFly = null; res(); }
-  });
+  }));
   T.holdBall = (a) => { T.ball(0, 0); ballObj.userData.holder = a; };
   T.dropBall = (x, z) => { T.ball(x, z); ballObj.userData.holder = null; };
+  T.music = (on) => C.SFX.setMusic(on);
 
-  // עדכון בכל פריים
+  // ---------- גשם ----------
+  T.rain = (on) => {
+    if (on && !rain) {
+      const n = 1600, pos = new Float32Array(n * 6);
+      for (let i = 0; i < n; i++) {
+        const x = (Math.random() - 0.5) * 50, y = Math.random() * 16, z = (Math.random() - 0.5) * 36;
+        pos.set([x, y, z, x + 0.05, y - 0.55, z], i * 6);
+      }
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      rain = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: '#c8d6e6', transparent: true, opacity: 0.55 }));
+      C.R.scene.add(rain);
+      rain.userData.save = { sun: C.R.sun.intensity, exp: C.R.renderer.toneMappingExposure };
+      C.R.sun.intensity *= 0.35; C.R.renderer.toneMappingExposure *= 0.8;
+    } else if (!on && rain) {
+      C.R.scene.remove(rain); C.R.sun.intensity = rain.userData.save.sun; C.R.renderer.toneMappingExposure = rain.userData.save.exp; rain = null;
+    }
+  };
+  // ---------- לילה (בלי חשמל: חושך וכוכבים) ----------
+  T.night = (on) => {
+    if (on && !night) {
+      const sc = C.R.scene;
+      night = { sun: C.R.sun.intensity, exp: C.R.renderer.toneMappingExposure, env: sc.environmentIntensity, bg: sc.background, fog: sc.fog };
+      C.R.sun.intensity = 0.15; C.R.renderer.toneMappingExposure = 0.55; sc.environmentIntensity = 0.12;
+      sc.background = new THREE.Color('#0b1030'); sc.fog = null;
+      const n = 900, p = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) { const a = Math.random() * Math.PI * 2, e = 0.15 + Math.random() * 1.3, r = 160; p.set([Math.cos(a) * Math.cos(e) * r, Math.sin(e) * r, Math.sin(a) * Math.cos(e) * r], i * 3); }
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p, 3));
+      night.stars = new THREE.Points(g, new THREE.PointsMaterial({ color: '#fffbe8', size: 1.6, sizeAttenuation: false }));
+      sc.add(night.stars);
+      night.lamp = new THREE.PointLight('#ffcf80', 30, 14, 1.6); sc.add(night.lamp);
+    } else if (!on && night) {
+      const sc = C.R.scene;
+      C.R.sun.intensity = night.sun; C.R.renderer.toneMappingExposure = night.exp; sc.environmentIntensity = night.env;
+      sc.background = night.bg; sc.fog = night.fog; sc.remove(night.stars); sc.remove(night.lamp); night = null;
+    }
+  };
+  T.lampAt = (x, y, z) => { if (night) night.lamp.position.set(x, y, z); };
+
+  // ---------- עדכון בכל פריים ----------
   T.update = (dt) => {
     for (const [a, w] of walks) {
       const d = w.to.clone().sub(a.pos); d.y = 0;
@@ -75,6 +135,12 @@ export function makeTheater(C, onCaption) {
       a.facing = Math.atan2(a.vel.z, a.vel.x);
     }
     for (const a of actors) { if (!walks.has(a)) a.vel.multiplyScalar(0.8); a.update(dt, C.time); }
+    for (const tw of tweens) {
+      tw.t += dt; const p = Math.min(1, tw.t / tw.s);
+      const e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+      tw.o.position.lerpVectors(tw.from, tw.to, e);
+      if (p >= 1) { tweens.delete(tw); tw.res(); }
+    }
     if (ballFly) {
       const F = ballFly; F.t += dt;
       const p = Math.min(1, F.t / F.dur);
@@ -84,33 +150,36 @@ export function makeTheater(C, onCaption) {
       if (p >= 1) { ballFly = null; C.SFX.sfxBounce(0.4); F.res(); }
     } else if (ballObj && ballObj.userData.holder) {
       const a = ballObj.userData.holder; const f = a.forward(new THREE.Vector3());
-      ballObj.position.set(a.pos.x + f.x * 0.3, 0.85, a.pos.z + f.z * 0.3);
+      ballObj.position.set(a.pos.x + f.x * 0.3, a.pos.y + 0.85, a.pos.z + f.z * 0.3);
     }
-    // חפצים שדמות מחזיקה בידיים (למשל מגש)
     for (const o of objects) {
       const a = o.userData.follow; if (!a) continue;
       const f = a.forward(new THREE.Vector3());
-      o.position.set(a.pos.x + f.x * 0.32, 0.95, a.pos.z + f.z * 0.32); o.rotation.y = -a.facing;
+      o.position.set(a.pos.x + f.x * 0.32, a.pos.y + (o.userData.holdY || 0.95), a.pos.z + f.z * 0.32); o.rotation.y = -a.facing;
     }
-    // בועות דיבור מעל הראש
+    if (rain) { rain.position.y -= dt * 18; if (rain.position.y < -8) rain.position.y += 8; }
+    if (night && night.stars) night.stars.rotation.y += dt * 0.004;
     for (const a of actors) {
       if (!a.bubble.classList.contains('show')) continue;
-      const v = a.pos.clone(); v.y = (a.height || 1.5) + 0.35; v.project(C.R.camera);
+      const v = a.pos.clone(); v.y += (a.height || 1.5) + 0.35; v.project(C.R.camera);
       a.bubble.style.left = `${(v.x + 1) / 2 * innerWidth}px`; a.bubble.style.top = `${(1 - v.y) / 2 * innerHeight}px`;
     }
   };
   T.camera = () => ({ pos: cam.pos.clone(), look: cam.look.clone(), speed: 2.6 });
-  // דילוג: כל ההמתנות נגמרות מיד
   T.skip = () => {
     T.skipped = true;
     for (const [t, res] of T._timers) { clearTimeout(t); res(); }
     for (const [, w] of walks) w.res();
     walks.clear();
+    for (const tw of tweens) tw.res();
+    tweens.clear();
     if (ballFly) { const r = ballFly.res; ballFly = null; r(); }
   };
   T.dispose = () => {
+    T.rain(false); T.night(false); T.music(true);
     for (const a of actors) { C.R.scene.remove(a.root); clearTimeout(a.sayT); }
     for (const o of objects) C.R.scene.remove(o);
+    if (ballObj) C.R.scene.remove(ballObj);
     for (const b of bubbles) b.remove();
   };
   return T;
@@ -119,9 +188,19 @@ export function makeTheater(C, onCaption) {
 // ---------- אביזרים פשוטים ----------
 const mat = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, ...o });
 function mesh(geo, m, x = 0, y = 0, z = 0) { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; return o; }
+function textTex(text, bg, fg, w = 512, h = 256, size = 58) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const x = c.getContext('2d');
+  x.fillStyle = bg; x.fillRect(0, 0, w, h);
+  x.fillStyle = fg; x.direction = 'rtl'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  const lines = text.split('\n');
+  x.font = `800 ${size}px Rubik`;
+  lines.forEach((l, i) => x.fillText(l, w / 2, h / 2 + (i - (lines.length - 1) / 2) * size * 1.2));
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
 
 export const PROPS = {
-  // גינה קטנה עם עגבניות וגדר נמוכה מלפנים
   garden(x, z) {
     const g = new THREE.Group();
     g.add(mesh(new THREE.BoxGeometry(4, 0.12, 2.4), mat('#5a3d22'), 0, 0.06, 0));
@@ -129,31 +208,157 @@ export const PROPS = {
       g.add(mesh(new THREE.ConeGeometry(0.28, 0.75, 8), mat('#3f8a35'), px, 0.48, pz));
       for (let i = 0; i < 3; i++) g.add(mesh(new THREE.SphereGeometry(0.075, 10, 8), mat('#d9302a', { roughness: 0.4 }), px + Math.cos(i * 2.1) * 0.2, 0.35 + i * 0.12, pz + Math.sin(i * 2.1) * 0.2));
     }
-    // גדר עץ נמוכה בצד הקרוב
     for (let i = -2; i <= 2; i += 0.5) g.add(mesh(new THREE.BoxGeometry(0.08, 0.8, 0.06), mat('#e8dcc0'), i, 0.4, 1.35));
     g.add(mesh(new THREE.BoxGeometry(4.1, 0.08, 0.05), mat('#e8dcc0'), 0, 0.62, 1.38));
     g.position.set(x, 0, z);
     return g;
   },
-  // מגש עם כוסות לימונדה
   tray() {
     const g = new THREE.Group();
     g.add(mesh(new THREE.BoxGeometry(0.42, 0.03, 0.3), mat('#c0c4c8', { metalness: 0.4 })));
     for (const s of [-1, 1]) g.add(mesh(new THREE.CylinderGeometry(0.05, 0.045, 0.14, 12), mat('#f7e26b', { roughness: 0.2, transparent: true, opacity: 0.9 }), s * 0.1, 0.085, 0));
     return g;
   },
-  // שלט מקרטון עם טקסט
-  sign(text) {
-    const c = document.createElement('canvas'); c.width = 512; c.height = 256;
-    const x = c.getContext('2d');
-    x.fillStyle = '#c9a16b'; x.fillRect(0, 0, 512, 256);
-    x.fillStyle = '#2a2430'; x.direction = 'rtl'; x.textAlign = 'center'; x.textBaseline = 'middle';
-    const lines = text.split('\n');
-    x.font = '800 58px Rubik';
-    lines.forEach((l, i) => x.fillText(l, 256, 128 + (i - (lines.length - 1) / 2) * 70));
-    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.65), new THREE.MeshStandardMaterial({ map: t, roughness: 0.9 }));
+  sign(text, bg = '#c9a16b', fg = '#2a2430', w = 1.3, h = 0.65) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: textTex(text, bg, fg), roughness: 0.9, side: THREE.DoubleSide }));
     m.castShadow = true;
     return m;
   },
+  // חתול פשוט (גוף, ראש, אוזניים, זנב)
+  cat(color = '#e08a2e') {
+    const g = new THREE.Group(), m = mat(color);
+    const body = mesh(new THREE.SphereGeometry(0.16, 14, 10), m, 0, 0.17, 0); body.scale.set(1, 0.85, 1.6); g.add(body);
+    g.add(mesh(new THREE.SphereGeometry(0.11, 14, 10), m, 0, 0.3, 0.22));
+    for (const s of [-1, 1]) { const e = mesh(new THREE.ConeGeometry(0.035, 0.08, 4), m, s * 0.055, 0.41, 0.22); g.add(e); }
+    const tail = mesh(new THREE.CylinderGeometry(0.022, 0.018, 0.34, 6), m, 0, 0.3, -0.26); tail.rotation.x = -0.7; g.add(tail);
+    for (const [sx, sz] of [[-0.07, 0.12], [0.07, 0.12], [-0.07, -0.12], [0.07, -0.12]]) g.add(mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.12, 6), m, sx, 0.06, sz));
+    return g;
+  },
+  // כלב פשוט עם קולר
+  dog(color = '#8a5a2b', collar = '#d02a2a') {
+    const g = new THREE.Group(), m = mat(color);
+    const body = mesh(new THREE.SphereGeometry(0.22, 14, 10), m, 0, 0.36, 0); body.scale.set(0.9, 0.8, 1.6); g.add(body);
+    g.add(mesh(new THREE.SphereGeometry(0.15, 14, 10), m, 0, 0.58, 0.34));
+    g.add(mesh(new THREE.SphereGeometry(0.07, 10, 8), mat('#5a3a1b'), 0, 0.55, 0.48));
+    for (const s of [-1, 1]) { const e = mesh(new THREE.SphereGeometry(0.06, 8, 6), mat('#5a3a1b'), s * 0.12, 0.66, 0.3); e.scale.set(0.6, 1.4, 0.6); g.add(e); }
+    g.add(mesh(new THREE.TorusGeometry(0.11, 0.025, 6, 16), mat(collar), 0, 0.5, 0.26));
+    const tail = mesh(new THREE.CylinderGeometry(0.03, 0.02, 0.3, 6), m, 0, 0.5, -0.38); tail.rotation.x = -0.9; tail.name = 'tail'; g.add(tail);
+    for (const [sx, sz] of [[-0.1, 0.2], [0.1, 0.2], [-0.1, -0.2], [0.1, -0.2]]) g.add(mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.25, 6), m, sx, 0.12, sz));
+    return g;
+  },
+  // גג נמוך (מחסן) עם דוד שמש
+  roof(w = 3, h = 2.6, d = 2) {
+    const g = new THREE.Group();
+    g.add(mesh(new THREE.BoxGeometry(w, h, d), mat('#e9e2d0'), 0, h / 2, 0));
+    const tank = mesh(new THREE.CylinderGeometry(0.35, 0.35, 1.1, 16), mat('#e8e8e8', { metalness: 0.5, roughness: 0.4 }), -w / 2 + 0.6, h + 0.45, -0.3); tank.rotation.z = Math.PI / 2; g.add(tank);
+    const panel = mesh(new THREE.BoxGeometry(1.1, 0.05, 0.8), mat('#1f3554', { metalness: 0.6, roughness: 0.3 }), -w / 2 + 0.6, h + 0.35, 0.4); panel.rotation.x = -0.5; g.add(panel);
+    g.add(mesh(new THREE.CylinderGeometry(0.04, 0.04, h, 8), mat('#8a8a8a'), w / 2 - 0.2, h / 2, d / 2 + 0.06));
+    return g;
+  },
+  ladder(h = 2.8) {
+    const g = new THREE.Group(), m = mat('#c9a24a');
+    for (const s of [-1, 1]) g.add(mesh(new THREE.BoxGeometry(0.05, h, 0.05), m, s * 0.22, h / 2, 0));
+    for (let y = 0.3; y < h; y += 0.35) g.add(mesh(new THREE.BoxGeometry(0.44, 0.04, 0.04), m, 0, y, 0));
+    return g;
+  },
+  can() { const g = new THREE.Group(); g.add(mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.05, 14), mat('#c9ced4', { metalness: 0.6, roughness: 0.3 }))); g.add(mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.01, 14), mat('#d99a7a'), 0, 0.03, 0)); return g; },
+  balloons(colors = ['#e8414a', '#3a7be0', '#f2c230', '#43b05c']) {
+    const g = new THREE.Group();
+    colors.forEach((c, i) => {
+      const b = mesh(new THREE.SphereGeometry(0.2, 14, 12), mat(c, { roughness: 0.3 }), (i - (colors.length - 1) / 2) * 0.28, 2.0 + (i % 2) * 0.2, 0); b.scale.y = 1.2; g.add(b);
+      g.add(mesh(new THREE.CylinderGeometry(0.005, 0.005, 1.2, 4), mat('#eee'), b.position.x * 0.5, 1.3, 0));
+    });
+    return g;
+  },
+  mat(c = '#c0463a') { return mesh(new THREE.BoxGeometry(2.2, 0.03, 1.4), mat(c), 0, 0.015, 0); },
+  cake(candles = 9) {
+    const g = new THREE.Group();
+    g.add(mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.2, 20), mat('#5a3320'), 0, 0.1, 0));
+    g.add(mesh(new THREE.CylinderGeometry(0.29, 0.29, 0.04, 20), mat('#f4ead8'), 0, 0.21, 0));
+    const fl = [];
+    for (let i = 0; i < candles; i++) {
+      const a = i / candles * Math.PI * 2;
+      g.add(mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.1, 6), mat('#4aa3e0'), Math.cos(a) * 0.18, 0.28, Math.sin(a) * 0.18));
+      const f = new THREE.Mesh(new THREE.SphereGeometry(0.018, 6, 6), new THREE.MeshBasicMaterial({ color: '#ffcc44' })); f.position.set(Math.cos(a) * 0.18, 0.35, Math.sin(a) * 0.18); g.add(f); fl.push(f);
+    }
+    g.userData.flames = fl;
+    return g;
+  },
+  candle() {
+    const g = new THREE.Group();
+    g.add(mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.18, 10), mat('#f4efe0'), 0, 0.09, 0));
+    const f = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 8), new THREE.MeshBasicMaterial({ color: '#ffb640' })); f.position.y = 0.22; f.scale.y = 1.6; g.add(f);
+    return g;
+  },
+  watermelon() {
+    const g = new THREE.Group();
+    const r = mesh(new THREE.SphereGeometry(0.26, 18, 12, 0, Math.PI * 2, 0, Math.PI / 2), mat('#2f7a32'), 0, 0, 0); r.rotation.x = Math.PI; r.position.y = 0.26; g.add(r);
+    g.add(mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.02, 18), mat('#e2393f'), 0, 0.26, 0));
+    return g;
+  },
+  table(w = 1.2, d = 0.7) {
+    const g = new THREE.Group(), m = mat('#9a6b3e');
+    g.add(mesh(new THREE.BoxGeometry(w, 0.05, d), m, 0, 0.72, 0));
+    for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) g.add(mesh(new THREE.BoxGeometry(0.05, 0.72, 0.05), m, sx * (w / 2 - 0.06), 0.36, sz * (d / 2 - 0.06)));
+    return g;
+  },
+  // דוכן / קיוסק קטן
+  stand(text, color = '#d8433a') {
+    const g = new THREE.Group();
+    g.add(mesh(new THREE.BoxGeometry(2.2, 1.0, 0.7), mat('#e9dfc9'), 0, 0.5, 0));
+    g.add(mesh(new THREE.BoxGeometry(2.4, 0.08, 1.0), mat(color), 0, 2.2, 0.1));
+    for (const s of [-1, 1]) g.add(mesh(new THREE.BoxGeometry(0.06, 2.2, 0.06), mat('#777'), s * 1.1, 1.1, -0.3));
+    const sg = PROPS.sign(text, color, '#fff6dc', 2.2, 0.45); sg.position.set(0, 2.45, 0.4); g.add(sg);
+    for (let i = 0; i < 5; i++) g.add(mesh(new THREE.SphereGeometry(0.08, 10, 8), mat(['#ff6b6b', '#ffd23f', '#4ecdc4', '#a06cd5', '#ff9f43'][i], { roughness: 0.4 }), -0.8 + i * 0.4, 1.08, 0.15));
+    return g;
+  },
+  smallBall(c = '#ff5aa5') { return mesh(new THREE.SphereGeometry(0.12, 16, 12), mat(c, { roughness: 0.4 })); },
+  bucket() { const g = new THREE.Group(); g.add(mesh(new THREE.CylinderGeometry(0.17, 0.13, 0.28, 16, 1, true), mat('#2f7de0', { side: THREE.DoubleSide }), 0, 0.14, 0)); g.add(mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.02, 16), mat('#8fd0ff', { transparent: true, opacity: 0.8 }), 0, 0.22, 0)); return g; },
+  bottle() { return mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.28, 12), mat('#aee3ff', { transparent: true, opacity: 0.7, roughness: 0.1 }), 0, 0, 0); },
+  // התזת מים: הרבה טיפות קטנות שעפות
+  splash(x, z) {
+    const g = new THREE.Group();
+    for (let i = 0; i < 26; i++) {
+      const d = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 6), new THREE.MeshBasicMaterial({ color: '#9fd8ff', transparent: true, opacity: 0.85 }));
+      d.userData.v = new THREE.Vector3((Math.random() - 0.5) * 3, 2 + Math.random() * 2.5, (Math.random() - 0.5) * 3);
+      g.add(d);
+    }
+    g.position.set(x, 1, z);
+    g.userData.splash = true;
+    return g;
+  },
+  book(c = '#3a7a3a') {
+    const g = new THREE.Group();
+    g.add(mesh(new THREE.BoxGeometry(0.28, 0.05, 0.36), mat(c)));
+    g.add(mesh(new THREE.BoxGeometry(0.26, 0.045, 0.34), mat('#f7f2e2'), 0.012, 0, 0));
+    return g;
+  },
+  radio() {
+    const g = new THREE.Group();
+    g.add(mesh(new THREE.BoxGeometry(0.5, 0.3, 0.18), mat('#7a4b2a', { roughness: 0.5 }), 0, 0.15, 0));
+    const spk = mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.02, 16), mat('#2a2a2a'), -0.12, 0.15, 0.09); spk.rotation.x = Math.PI / 2; g.add(spk);
+    g.add(mesh(new THREE.BoxGeometry(0.16, 0.08, 0.02), mat('#e8d9a0'), 0.13, 0.18, 0.09));
+    const ant = mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.5, 4), mat('#bbb', { metalness: 0.8 }), 0.2, 0.5, -0.05); ant.rotation.z = -0.4; g.add(ant);
+    return g;
+  },
+  chair(A) {
+    if (A.models.plastic_monobloc_chair_01) return fitModel(A.models.plastic_monobloc_chair_01.clone(), { height: 0.85 });
+    return mesh(new THREE.BoxGeometry(0.45, 0.45, 0.45), mat('#eee'), 0, 0.22, 0);
+  },
+  sparkle() {
+    const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.12), new THREE.MeshBasicMaterial({ color: '#fff27a' }));
+    return m;
+  },
 };
+
+// טיפות התזה – מעדכנים בכל פריים (נקרא מתוך התסריט עם T.splash)
+export function addSplash(T, x, z) {
+  const s = T.add(PROPS.splash(x, z));
+  let t = 0;
+  const step = () => {
+    t += 1 / 60;
+    for (const d of s.children) { d.userData.v.y -= 9.8 / 60; d.position.addScaledVector(d.userData.v, 1 / 60); }
+    if (t < 1.2 && !T.skipped) requestAnimationFrame(step); else T.remove(s);
+  };
+  requestAnimationFrame(step);
+}
