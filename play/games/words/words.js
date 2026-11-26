@@ -4,6 +4,8 @@
 import * as THREE from 'three';
 import { STORIES } from './stories.js';
 import { STORIES_A } from './stories-a.js';
+import { makeTheater } from './theater.js';
+import { SCENES } from './scenes.js';
 
 // ההתקדמות נשמרת באותו מקום כמו בגרסה הקודמת (stanga/learn), כדי שלא תאבד
 const store = {
@@ -28,6 +30,7 @@ let crates = [];
 let held = null;
 let extrasBuilt = null; // משטח העץ והשלט של המחסן
 let cleared = false;
+let theater = null;   // הסרט שמציג את הסיפור בשכונה
 const $ = (id) => document.getElementById(id);
 
 export const WORDS = {
@@ -43,11 +46,12 @@ export const WORDS = {
     toMenu();
   },
   exit() {
+    endScene(true);
     S.phase = 'menu';
     held = null;
     clearBoard();
     if (extrasBuilt) extrasBuilt.visible = false;
-    for (const id of ['w-menu', 'w-hud', 'w-over', 'w-rules', 'rotate']) $(id).classList.add('hidden');
+    for (const id of ['w-menu', 'w-hud', 'w-over', 'w-rules', 'rotate', 'scene-ui']) $(id).classList.add('hidden');
   },
   canMove: () => S.phase === 'play',
   onTap, onAction: actNearby, update, camera,
@@ -275,6 +279,8 @@ function setupUI() {
   $('w-again').addEventListener('click', () => startStory(S.story));
   $('w-next').addEventListener('click', () => { const L = list(); const i = L.indexOf(S.story); if (L[i + 1]) startStory(L[i + 1]); else toMenu(); });
   $('w-other').addEventListener('click', toMenu);
+  $('w-replay').addEventListener('click', () => playScene(showOver));
+  $('scene-skip').addEventListener('click', () => endScene(false));
   document.querySelectorAll('[data-grade]').forEach((b) => b.addEventListener('click', () => { S.grade = b.dataset.grade; store.set('grade', S.grade); renderStoryList(); C.SFX.initAudio(); C.SFX.sfxKick(0.2); }));
   addEventListener('resize', checkOrientation);
 }
@@ -323,6 +329,7 @@ function startStory(story) {
   if (!store.get('seen-rules', false)) { store.set('seen-rules', true); $('w-rules').classList.remove('hidden'); }
 }
 function toMenu() {
+  endScene(true);
   S.phase = 'menu'; held = null;
   clearBoard();
   $('w-menu').classList.remove('hidden'); $('w-hud').classList.add('hidden'); $('w-over').classList.add('hidden');
@@ -421,20 +428,55 @@ function placed(b, cr) {
 }
 function finish() {
   if (C.game !== WORDS) return;
-  S.phase = 'over';
   C.kid.play('cheer');
   C.SFX.sfxCheer(true);
   const st = starsFor(S.mistakes);
   const done = store.get('done', {});
   done[S.story.id] = Math.max(done[S.story.id] ?? 0, st);
   store.set('done', done);
+  S.lastStars = st;
+  $('w-hud').classList.add('hidden');
+  // אם יש לסיפור "סרט" – רואים אותו קורה בשכונה, ואחר כך מסך הסיום
+  if (SCENES[S.story.id]) setTimeout(() => playScene(showOver), 1200);
+  else showOver();
+}
+
+// ---------- הסרט: הסיפור קורה בשכונה ----------
+function playScene(then) {
+  if (C.game !== WORDS) return;
+  S.phase = 'scene';
+  $('w-over').classList.add('hidden'); $('w-hud').classList.add('hidden');
+  clearBoard(); if (extrasBuilt) extrasBuilt.visible = false;
+  C.kid.root.visible = false;
+  const ui = $('scene-ui'); ui.classList.remove('hidden');
+  ui.classList.toggle('nikud', hasNikud(S.story));
+  $('scene-cap').textContent = '';
+  theater = makeTheater(C, (text) => { const el = $('scene-cap'); el.textContent = text; el.classList.remove('in'); void el.offsetWidth; el.classList.add('in'); });
+  theater.then = then;
+  SCENES[S.story.id](theater).catch((e) => console.error(e)).finally(() => endScene(false));
+}
+function endScene(silent) {
+  if (!theater) return;
+  const T = theater; theater = null;
+  T.skip(); T.dispose();
+  $('scene-ui').classList.add('hidden');
+  if (C) { C.kid.root.visible = true; if (extrasBuilt) extrasBuilt.visible = true; }
+  if (!silent && T.then && C.game === WORDS) T.then();
+}
+
+function showOver() {
+  if (C.game !== WORDS) return;
+  S.phase = 'over';
+  const st = S.lastStars;
+  const done = store.get('done', {});
   const L = list();
   const nextS = L[L.indexOf(S.story) + 1];
   const allDone = L.every((x) => done[x.id] != null);
   $('over-title').textContent = !nextS && allDone ? 'סיימת את כל הסיפורים! 🏆' : 'השלמת את הסיפור! 🎉';
   $('w-next').textContent = nextS ? `לסיפור הבא: ${nextS.emoji} ${nextS.title} ▶` : 'לכל הסיפורים';
   $('over-stars').textContent = '⭐'.repeat(st) + '☆'.repeat(3 - st);
-  $('over-sub').textContent = S.mistakes === 0 ? 'בלי אף טעות – אלופי הקריאה של השכונה!' : `השלמת ${page.blanks.length} מילים עם ${S.mistakes} ${S.mistakes === 1 ? 'טעות' : 'טעויות'}.`;
+  $('w-replay').classList.toggle('hidden', !SCENES[S.story.id]);
+  $('over-sub').textContent = S.mistakes === 0 ? 'בלי אף טעות – אלופי הקריאה של השכונה!' : `השלמת ${S.story.blanks.length} מילים עם ${S.mistakes} ${S.mistakes === 1 ? 'טעות' : 'טעויות'}.`;
   const box = $('over-text'); box.innerHTML = '';
   const need = S.story.blanks.map(plain);
   for (const i of S.story.field) {
@@ -455,6 +497,7 @@ function finish() {
 // ---------- עדכון בכל פריים ----------
 function update(dt) {
   const t = C.time;
+  if (theater) { theater.update(dt); return; }
   for (const c of crates) {
     if (c.state === 'held') {
       const target = C.kid.pos.clone(); target.y = 1.55 + Math.abs(Math.sin(t * 9)) * 0.03 * Math.min(1, C.kid.vel.length());
@@ -484,6 +527,7 @@ function update(dt) {
 const CAM_TOP = { tilt: 62, hw: 14.3, hd: 8.4 };
 const CAM_NEAR = { tilt: 48, hw: 4.6, ahead: 1.5 };
 function camera(core, vt, aspect) {
+  if (theater) return theater.camera();
   if (S.phase === 'menu') {
     const t = C.time * 0.06;
     return { pos: new THREE.Vector3(Math.sin(t) * 6, 11, 22), look: new THREE.Vector3(0, 0, 0), speed: 2 };
@@ -501,4 +545,4 @@ function camera(core, vt, aspect) {
 }
 
 // לבדיקות
-window.__words = { get crates() { return crates; }, get page() { return page; }, get S() { return S; }, solve: () => { for (const b of page.blanks) b.filled = true; S.filled = page.blanks.length; drawPage(); finish(); } };
+window.__words = { get crates() { return crates; }, get page() { return page; }, get S() { return S; }, scene: () => { S.lastStars = 3; playScene(showOver); }, solve: () => { for (const b of page.blanks) b.filled = true; S.filled = page.blanks.length; drawPage(); finish(); } };

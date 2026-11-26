@@ -340,9 +340,10 @@ function camera(dt) {
     speed = 4;
   } else {
     // בחצר: מלווה את הדמות מאחור ומלמעלה
-    const tilt = THREE.MathUtils.degToRad(40);
-    const dist = 6.5 / (vt * Math.min(aspect, 1.8));
-    look = new THREE.Vector3(C.kid.pos.x, 0.8, C.kid.pos.z - 1.6);
+    // גבוה ורחוק מספיק כדי לראות את המגרש והתחנות, ועדיין זז עם הדמות
+    const tilt = THREE.MathUtils.degToRad(56);
+    const dist = 12.5 / (vt * Math.min(aspect, 1.8));
+    look = new THREE.Vector3(C.kid.pos.x * 0.6, 0, C.kid.pos.z * 0.5 - 1.2);
     pos = look.clone().add(new THREE.Vector3(0, Math.sin(tilt), Math.cos(tilt)).multiplyScalar(dist));
   }
   const k = camInit ? 1 - Math.exp(-dt * speed) : 1;

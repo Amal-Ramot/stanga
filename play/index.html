@@ -32,7 +32,9 @@
     "./play/games/index.js": "./play/games/index.js?v=__V__",
     "./play/games/words/words.js": "./play/games/words/words.js?v=__V__",
     "./play/games/words/stories.js": "./play/games/words/stories.js?v=__V__",
-    "./play/games/words/stories-a.js": "./play/games/words/stories-a.js?v=__V__"
+    "./play/games/words/stories-a.js": "./play/games/words/stories-a.js?v=__V__",
+    "./play/games/words/theater.js": "./play/games/words/theater.js?v=__V__",
+    "./play/games/words/scenes.js": "./play/games/words/scenes.js?v=__V__"
   }
 }
 </script>
@@ -139,10 +141,18 @@
     <div class="over-read-h">קוראים את כל הקטע:</div>
     <div id="over-text" class="over-text"></div>
     <button id="w-next" class="big" type="button">לסיפור הבא ▶</button>
+    <button id="w-replay" class="link" type="button">🎬 לראות שוב את הסיפור קורה בשכונה</button>
     <button id="w-again" class="link" type="button">עוד פעם את אותו סיפור</button>
     <button id="w-other" class="link" type="button">לכל הסיפורים</button>
   </div>
 </div>
+
+<!-- הסרט: הסיפור קורה בשכונה -->
+<div id="scene-ui" class="hidden">
+  <div class="scene-top"><span class="scene-tag">🎬 הסיפור קורה בשכונה</span><button id="scene-skip" type="button">דלג ⏭</button></div>
+  <div id="scene-cap"></div>
+</div>
+<div id="bubbles-play"></div>
 
 <div id="pop"><div class="t"></div><div class="s"></div></div>
 <div id="msg"></div>
