@@ -165,7 +165,9 @@ export function makeTheater(C, story, onCaption) {
       a.bubble.style.left = `${(v.x + 1) / 2 * innerWidth}px`; a.bubble.style.top = `${(1 - v.y) / 2 * innerHeight}px`;
     }
   };
-  T.camera = () => ({ pos: cam.pos.clone(), look: cam.look.clone(), speed: 2.6 });
+  // בתחילת הסרט המצלמה קופצת ישר למקום (בלי "לעוף" מהמקום הקודם); אחר כך זזה ברכות בין זוויות
+  let snap = 2;
+  T.camera = () => { const speed = snap > 0 ? 200 : 2.6; if (snap > 0) snap--; return { pos: cam.pos.clone(), look: cam.look.clone(), speed }; };
   T.skip = () => {
     T.skipped = true;
     for (const [t, res] of T._timers) { clearTimeout(t); res(); }
@@ -441,6 +443,32 @@ export const PROPS = {
     for (let i = 0; i < 8; i++) { g.add(mesh(new THREE.CylinderGeometry(0.012, 0.016, 0.05, 8), mat('#f8f8f0'), (i - 3.5) * 0.06, 0.03, -0.18)); g.add(mesh(new THREE.CylinderGeometry(0.012, 0.016, 0.05, 8), mat('#222'), (i - 3.5) * 0.06, 0.03, 0.18)); }
     return g;
   },
+  pillow() { const m = mesh(new THREE.BoxGeometry(0.6, 0.15, 0.4), mat('#f4c2d7')); m.position.y = 0.08; return m; },
+  puddle() { const m = new THREE.Mesh(new THREE.CircleGeometry(0.9, 24), new THREE.MeshStandardMaterial({ color: '#6fa8d6', roughness: 0.05, metalness: 0.3, transparent: true, opacity: 0.8 })); m.rotation.x = -Math.PI / 2; m.position.y = 0.04; return m; },
+  apple() { const g = new THREE.Group(); g.add(mesh(new THREE.SphereGeometry(0.08, 14, 12), mat('#d32f2f', { roughness: 0.35 }))); g.add(mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.05, 4), mat('#5a3a1b'), 0, 0.09, 0)); return g; },
+  moon() { const m = new THREE.Mesh(new THREE.SphereGeometry(3, 24, 16), new THREE.MeshBasicMaterial({ color: '#fff6cf' })); return m; },
+  windowFrame() { const g = new THREE.Group(); const m = mat('#f1ece0'); for (const [w, h, x, y] of [[1.6, 0.1, 0, 0.75], [1.6, 0.1, 0, -0.75], [0.1, 1.6, 0.75, 0], [0.1, 1.6, -0.75, 0], [0.06, 1.5, 0, 0]]) g.add(mesh(new THREE.BoxGeometry(w, h, 0.08), m, x, y, 0)); return g; },
+  bus() { const g = PROPS.truck(); g.traverse((o) => { if (o.isMesh && o.material.color && o.material.color.getHexString() === 'f4f1ea') o.material = mat('#f2c230'); }); const sg = PROPS.sign('אוטובוס 🚌', '#1f5fa8', '#fff', 1.8, 0.6); sg.position.set(-1.12, 1.3, 0); sg.rotation.y = -Math.PI / 2; g.add(sg); return g; },
+  cow() {
+    const g = new THREE.Group(), w = mat('#f5f5f0'), b = mat('#222');
+    const body = mesh(new THREE.BoxGeometry(0.6, 0.55, 1.2), w, 0, 0.75, 0); g.add(body);
+    for (const [x, y, z] of [[0.31, 0.8, 0.2], [-0.31, 0.7, -0.3], [0.1, 1.03, -0.2]]) g.add(mesh(new THREE.BoxGeometry(0.02, 0.22, 0.3), b, x, y, z));
+    g.add(mesh(new THREE.BoxGeometry(0.4, 0.38, 0.45), w, 0, 0.95, 0.75));
+    g.add(mesh(new THREE.BoxGeometry(0.36, 0.16, 0.12), mat('#f2a9b5'), 0, 0.85, 1.0));
+    for (const [x, z] of [[-0.2, -0.45], [0.2, -0.45], [-0.2, 0.45], [0.2, 0.45]]) g.add(mesh(new THREE.BoxGeometry(0.12, 0.5, 0.12), w, x, 0.25, z));
+    return g;
+  },
+  sand(w = 10, d = 6) { const m = mesh(new THREE.BoxGeometry(w, 0.08, d), mat('#e8d39a')); m.position.y = 0.04; return m; },
+  castle() {
+    const g = new THREE.Group(), m = mat('#d9bf7f');
+    g.add(mesh(new THREE.BoxGeometry(0.8, 0.35, 0.8), m, 0, 0.17, 0));
+    for (const [x, z] of [[-0.4, -0.4], [0.4, -0.4], [-0.4, 0.4], [0.4, 0.4]]) { g.add(mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.55, 10), m, x, 0.27, z)); g.add(mesh(new THREE.ConeGeometry(0.14, 0.22, 10), m, x, 0.65, z)); }
+    g.add(mesh(new THREE.CylinderGeometry(0.18, 0.2, 0.7, 12), m, 0, 0.5, 0)); g.add(mesh(new THREE.ConeGeometry(0.2, 0.3, 12), m, 0, 1.0, 0));
+    return g;
+  },
+  sea(w = 30, d = 8) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.1, d), new THREE.MeshStandardMaterial({ color: '#2f8fd0', roughness: 0.1, metalness: 0.2, transparent: true, opacity: 0.92 })); m.position.y = 0.05; return m; },
+  wave() { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 8, 16, 1, false, 0, Math.PI), new THREE.MeshStandardMaterial({ color: '#5ab4e8', transparent: true, opacity: 0.85 })); m.rotation.z = Math.PI / 2; return m; },
+  seed() { return mesh(new THREE.SphereGeometry(0.03, 8, 6), mat('#5a3a1b')); },
   sparkle() {
     const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.12), new THREE.MeshBasicMaterial({ color: '#fff27a' }));
     return m;
